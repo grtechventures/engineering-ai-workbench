@@ -15,7 +15,9 @@ class Runtime(BaseModel):
     model_config=ConfigDict(extra='forbid')
     comparison_image:str
     python_image:str
-class ConfigurationMixin:
+from .channels import ChannelsMixin
+
+class ConfigurationMixin(ChannelsMixin):
     def init_configuration(self):
         self.db.execute('CREATE TABLE IF NOT EXISTS connections(id TEXT PRIMARY KEY,payload TEXT)')
         row=self.db.execute("SELECT value FROM settings WHERE key='runtime_config'").fetchone()

@@ -287,3 +287,13 @@ from .configuration import MatlabConfig
 def matlab_get():return engine.matlab_get()
 @app.post('/api/runtime/matlab')
 def matlab_save(body:MatlabConfig):return engine.matlab_save(body.model_dump())
+
+from .channels import ChannelConfig
+@app.get('/api/channels')
+def channels_get(): return engine.channels_get()
+@app.post('/api/channels')
+def channel_save(body: ChannelConfig): return engine.channel_save(body.model_dump())
+@app.post('/api/channels/{cid}')
+def channel_update(cid: str, body: ChannelConfig): return engine.channel_save(body.model_dump(), cid)
+@app.post('/api/channels/{cid}/preview')
+def channel_preview(cid: str, body: Payload): return engine.channel_preview(cid)

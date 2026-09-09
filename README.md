@@ -243,3 +243,18 @@ Unsupported extensions produce an explicit reader error. Legacy XLS/DOC, encrypt
 ### MATLAB setup planning
 
 Models & runtime includes an editable MATLAB configuration for local or enterprise-server deployment, installation/server references, release, required toolboxes and manually recorded license-review status. It persists locally. This is setup metadata only: no MATLAB adapter, remote execution, license verification or entitlement is implied. Python remains the implemented calculation runtime.
+
+### Channels
+
+The Channels page lists Microsoft Teams first, followed by Slack, other enterprise
+platforms, and a local test option. Add or edit named profiles with tenant/workspace
+and destination references, intended users/groups, and requested capabilities.
+Profiles persist locally. **Preview locally** displays a synthetic notification;
+it does not test authentication, contact a provider, or send a message.
+
+This is offline configuration only. Incoming requests, notifications, and result
+sharing are not connected. Capability selections and identity references record
+intent, not permissions. Do not enter credentials or webhook URLs. A future live
+adapter requires administrator-approved network access, protected credentials,
+verified identity mapping, authorization, and data-release controls. Script and
+result approval remains in the Workbench.

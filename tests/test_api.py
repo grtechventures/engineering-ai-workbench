@@ -55,3 +55,14 @@ def test_source_is_fixed_read_only_catalog(client):
     c,m=client
     assert len(c.get('/api/source').json()['files'])==2
     assert c.get('/api/source/../../.env').status_code==404
+
+def test_channel_setup_and_preview_boundaries(client):
+    c,m=client
+    assert c.post('/api/channels',json={'name':'Teams'},headers={'X-Workbench-Token':'wrong'}).status_code==403
+    r=c.post('/api/channels',json={'name':'Teams'})
+    assert r.status_code==200
+    cid=r.json()['id']
+    assert c.get('/api/channels').json()['live_available'] is False
+    assert c.post(f'/api/channels/{cid}/preview',json={}).json()['sent'] is False
+    assert c.post(f'/api/channels/{cid}/preview',json={'send':True}).status_code==422
+    assert c.post('/api/channels',json={'name':'Teams','enabled':True}).status_code==422
