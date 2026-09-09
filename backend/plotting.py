@@ -70,15 +70,18 @@ class PlottingMixin:
         context={'points_a':data.get('points_a',[])[:3],'points_b':data.get('points_b',[])[:3],'delta':data.get('delta',[])[:3],'metrics':data.get('metrics',{}),'note':'Only a preview is shown; read all samples from the input file.'}
         context['attachments']=data.get('attachments',[])
         context['files']=data.get('files',[])[:10]
-        if any(f['name'].lower().endswith('.xlsx') for f in data.get('files',[])):
+        if data.get('files'):
             from .excel_preview import preview_excel
-            context['excel_preview']=preview_excel(self,data,image)
+            context['file_inspection']=preview_excel(self,data,image)
         prompt+=' Large uploaded files are mounted read-only at each files[].path; names and previews are metadata only. Read the actual files in streaming chunks; do not treat previews as complete data. Available memory is 512 MB.'
+        prompt+=' Use the installed workbench_files module: rows(file, sheet=None) yields full raw table rows; text_blocks(file) yields location/text dictionaries for PDF, Word and text. file is an entry in input files. Prefer these readers. Inspection gives actual row numbers, not an assumed first-row header. Revise failed code from scratch when its assumptions contradict inspection. Do not copy rejected code unchanged.'
         for attempt in range(2):
             raw=self.gateway.complete('local',prompt,engineering_context=context,schema=PlotDraft.model_json_schema(),max_tokens=6000)
             if raw.strip().startswith('```'):raw='\n'.join(raw.strip().splitlines()[1:-1])
             try:
                 draft=PlotDraft.model_validate(json.loads(raw));ast.parse(draft.code)
+                if parent and parent.get('status') in ('failed','rejected') and ast.dump(ast.parse(draft.code))==ast.dump(ast.parse(parent['code'])):
+                    raise ValueError('The revised script is unchanged from the failed or rejected script; repair the reported failure')
                 break
             except (ValueError,SyntaxError) as exc:
                 if attempt:raise ValueError('The model did not produce valid Python after a drafting repair. No code was executed; revise the request and try again.') from exc

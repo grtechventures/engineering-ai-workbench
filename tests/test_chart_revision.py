@@ -66,6 +66,9 @@ def test_worker_failure_is_visible_and_can_be_revised(runtime,monkeypatch):
     monkeypatch.setattr('backend.plotting.run_plot_script',fail)
     r=e.plot_action(p['id'],'approve',p['fingerprint'],False)
     assert r['status']=='failed' and 'Missing output' in r['error']
+    with pytest.raises(ValueError,match='valid Python'):
+        e.plot_propose(c['id'],'Fix output',parent_id=p['id'])
+    monkeypatch.setattr(e.gateway,'complete',lambda *a,**kw:json.dumps({'title':'Revised','summary':'Fixed output','code':"import json\njson.dump({'mean':2},open('/outputs/result.json','w'))"}))
     q=e.plot_propose(c['id'],'Fix output',parent_id=p['id'])
     assert q['status']=='code_review'
 

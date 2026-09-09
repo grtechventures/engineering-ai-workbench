@@ -1,3 +1,4 @@
 *
 !docker/
 !docker/Dockerfile.python-tasks
+!docker/workbench_files.py

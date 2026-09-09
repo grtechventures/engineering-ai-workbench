@@ -233,3 +233,9 @@ Validation: 110 automated checks pass, and an actual Docker task streamed a 201 
 ### Excel calculations
 
 The Python worker image now includes openpyxl for `.xlsx` files. Calculation requests with attached files route to reviewed Python tasks. A released reader inspects a bounded workbook preview inside Docker before drafting code; it does not run macros, follow external links, or recalculate Excel formulas. Calculations must disclose cached/missing formula values and avoid double-counting subtotal and total rows. Legacy `.xls` and password-protected workbooks are not supported. Rebuild and select the updated Python worker image when upgrading an existing installation.
+
+### Shared Python file readers
+
+The file worker includes `workbench_files.rows(file, sheet=None)` for XLSX/CSV/TSV and `text_blocks(file)` for DOCX/PDF/TXT/Markdown/JSON. It handles extensionless mounted filenames. A released bounded inspection runs inside Docker before generation and supplies actual row positions and document locations. The generated calculation must still select meaningful detail rows and avoid double counting; reader success does not establish analytical correctness.
+
+Unsupported extensions produce an explicit reader error. Legacy XLS/DOC, encrypted documents, and scanned-PDF OCR are not implemented. PDF text extraction does not guarantee table reconstruction. The standard runtime and review limits continue to apply. Unchanged failed/rejected Python revisions are blocked rather than offered as a repair.
