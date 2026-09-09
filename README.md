@@ -201,3 +201,7 @@ Open an accepted comparison without generated Python, then **Evidence → Schedu
 The scheduler starts with the web service and uses no internet or operating-system cron. The machine must be awake and the service running. It does not install a Windows service or wake the computer. Timezone data is provisioned through the pinned tzdata dependency; offline installations need its wheel in their approved bundle.
 
 See [SCHEDULING.md](SCHEDULING.md) for timing, approval and recovery semantics.
+
+## Runtime Python and tool registration
+
+Generate reviewed Python tasks for calculations, tables and plots, then revise their scripts in the conversation. Each version runs only after approval in a pinned local Docker image. See [Dynamic Python tasks](PLOTTING.md) for setup, artifact review and scope limits. The Tools page records application and optional source-folder references for future reviewed adapter integration; registration does not enable execution or source access.

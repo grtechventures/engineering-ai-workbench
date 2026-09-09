@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 class ConversationReply(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    action:Literal['reply','run']
+    action:Literal['reply','run','python']
     response:str=Field(min_length=1,max_length=5000)
 
 class ConversationsMixin:
@@ -13,6 +13,8 @@ class ConversationsMixin:
         CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, agent_id TEXT, title TEXT, created REAL, updated REAL);
         CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id TEXT, role TEXT, content TEXT, created REAL, job_id TEXT);
         ''');self.db.commit()
+        if 'python_task_id' not in [r[1] for r in self.db.execute('PRAGMA table_info(messages)')]:
+            self.db.execute('ALTER TABLE messages ADD COLUMN python_task_id TEXT');self.db.commit()
     def conversation_create(self,agent_id):
         self.agent_get(agent_id)
         cid=uuid.uuid4().hex;now=time.time()
@@ -26,44 +28,37 @@ class ConversationsMixin:
             item=dict(row);item['messages']=[dict(x) for x in self.db.execute('SELECT * FROM messages WHERE conversation_id=? ORDER BY id',(cid,))]
         with self.lock:
             item['references']=[{**dict(r),'refs':json.loads(r['refs'])} for r in self.db.execute('SELECT * FROM retrievals WHERE conversation_id=? ORDER BY id DESC LIMIT 10',(cid,))]
+        item['python_tasks']=self.plot_list(cid)
         return item
     def conversation_list(self):
         with self.lock:return [dict(x) for x in self.db.execute('SELECT * FROM conversations ORDER BY updated DESC')]
-    def message_add(self,cid,role,content,job_id=None):
+    def message_add(self,cid,role,content,job_id=None,python_task_id=None):
         now=time.time()
         with self.lock:
-            self.db.execute('INSERT INTO messages(conversation_id,role,content,created,job_id) VALUES(?,?,?,?,?)',(cid,role,content,now,job_id))
+            self.db.execute('INSERT INTO messages(conversation_id,role,content,created,job_id,python_task_id) VALUES(?,?,?,?,?,?)',(cid,role,content,now,job_id,python_task_id))
             self.db.execute('UPDATE conversations SET updated=? WHERE id=?',(now,cid));self.db.commit()
-    def conversation_send(self,cid,text):
+    def conversation_send(self,cid,text,selected_job=None,parent_id=None,dynamic=False):
         convo=self.conversation_get(cid);agent=self.agent_get(convo['agent_id']);self.check_agent({'agent':agent})
         if agent['mode']=='local' and not self.gateway.info()['local']['configured']:raise ValueError('Connect a local model or select demo mode before sending a message')
         if not text.strip():raise ValueError('Write a message first')
         last_job=next((m['job_id'] for m in reversed(convo['messages']) if m['job_id']),None)
         job=self.get(last_job) if last_job else None
-        # Chart formatting is a bounded display action, never generated Python.
-        axis_request = bool(re.search(r'\b(axis|axes|xy|x[ -]y)\b', text, re.I) and re.search(r'\b(add|show|draw|display)\b', text, re.I))
-        if axis_request:
-            if not job or not job.get('result'):
-                response='A completed analysis is needed before adding axis lines. No chart was changed.'
-                target=None
-            else:
-                self.event(last_job,'chart_axes','X and Y axis lines enabled in the Workbench plot; numerical results unchanged')
-                response='Added X and Y axis lines to the plot in Analysis & evidence. This is a display change; no Python was generated or executed and numerical results are unchanged.'
-                if re.search(r'\b(mean|average)\b',text,re.I):
-                    response+=' A dotted mean line was not added: specify which series to average; this prototype currently supports axis lines only.'
-                target=last_job
+        # Route explicit runtime work and selected artifact revisions to reviewed Python.
+        wants_python=dynamic or parent_id or bool(re.search(r'\b(plot|chart|axis|axes|xy|histogram|regression|integral|standard deviation)\b',text,re.I))
+        if wants_python:
+            proposal=self.plot_propose(cid,text,selected_job,parent_id)
             self.message_add(cid,'user',text)
-            self.message_add(cid,'assistant',response,target)
-            return {'conversation':self.conversation_get(cid),'job_id':target}
+            self.message_add(cid,'assistant','A Python task draft is ready in Analysis & evidence. Review the exact script and authorize Docker execution; no generated code has run.',proposal['job_id'],proposal['id'])
+            return {'conversation':self.conversation_get(cid),'job_id':proposal['job_id'],'python_task':proposal}
         references=self.knowledge_search(text)
         history=[{'role':m['role'],'content':m['content'][:1200]} for m in convo['messages'][-8:]]
         if agent['mode']=='local':
             prompt=('You are an engineering workbench assistant. Explain results and dispatch supported analysis requests. '
-                    'Return JSON with action (reply or run) and response (friendly text). Choose run only when the user requests a new run comparison '
+                    'Return JSON with action (reply, run or python) and response (friendly text). Choose run only when the user requests a new run comparison '
                     'or a five-sample moving-average difference between the two provided synthetic runs. All runs will require human plan approval. '
                     'The project already contains Run A and Run B, ready through the C++ export tool; the user does not need to upload or provide them. '
                     'For an explicit request to compare these runs or smooth their difference, choose run immediately so the plan can be reviewed. '
-                    'Choose reply for questions, greetings, explanations, and unsupported requests. Do not promise capabilities beyond these tools. '
+                    'Choose python for requested calculations, tables, plots or revisions beyond the released comparison and smoothing routines. Choose reply for questions, greetings, explanations, and unsupported data access. Do not promise capabilities beyond these tools. '
                     'Measurement rules: reported differences and RMSE are in arbitrary units (a.u.), never percentages. No normalization baseline or acceptance tolerance exists. '
                     'RMSE is sqrt(mean(squared differences)), not the arithmetic average of signed differences. Do not infer an engineering pass/fail conclusion. '
                     'Do not describe the error or similarity as small, moderate, large, good or acceptable: a reference scale is not supplied. '
@@ -98,6 +93,10 @@ class ConversationsMixin:
         if not convo['messages']:
             with self.lock:self.db.execute('UPDATE conversations SET title=? WHERE id=?',(text[:70],cid));self.db.commit()
         jid=None
+        if answer.action=='python':
+            proposal=self.plot_propose(cid,text,selected_job,parent_id)
+            self.message_add(cid,'assistant','Review the generated Python task in Analysis & evidence before Docker execution.',proposal['job_id'],proposal['id'])
+            return {'conversation':self.conversation_get(cid),'job_id':proposal['job_id'],'python_task':proposal}
         if answer.action=='run':
             # The actual graph independently validates and reviews its plan before any tool call.
             jid=self.create(text,agent=agent)

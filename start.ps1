@@ -3,6 +3,7 @@ Set-Location $PSScriptRoot
 if (!(Test-Path '.venv\Scripts\python.exe')) {
     throw 'Provision .venv and dependencies first; startup never downloads packages. See README offline setup.'
 }
+if (!$env:EWB_PLOT_IMAGE -and (Test-Path 'data\python-task-image.txt')) { $env:EWB_PLOT_IMAGE = (Get-Content 'data\python-task-image.txt' -Raw).Trim() }
 if (Test-Path 'data\worker-image.txt') {
     if (!$env:EWB_WORKER_IMAGE) { $env:EWB_WORKER_IMAGE = (Get-Content 'data\worker-image.txt' -Raw).Trim() }
 }

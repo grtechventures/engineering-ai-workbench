@@ -52,7 +52,14 @@ class Reason(Payload):topic:Literal['rmse','validation','sampling']
 class AgentEdit(Payload):
     config:AgentConfig
     revision:int|None=None
-class AgentTask(Payload):request:str=Field(min_length=1,max_length=2000)
+class AgentTask(Payload):
+    request:str=Field(min_length=1,max_length=2000)
+    job_id:str|None=None
+    parent_id:str|None=None
+    dynamic:bool=False
+class PythonDecision(Payload):
+    action:Literal['approve','reject','accept','retry']
+    fingerprint:str
 class ConversationStart(Payload):agent_id:str
 
 @app.middleware('http')
@@ -99,7 +106,7 @@ def new_conversation(body:ConversationStart):return engine.conversation_create(b
 @app.get('/api/conversations/{cid}')
 def get_conversation(cid:str):return engine.conversation_get(cid)
 @app.post('/api/conversations/{cid}/messages')
-def message(cid:str,body:AgentTask):return engine.conversation_send(cid,body.request)
+def message(cid:str,body:AgentTask):return engine.conversation_send(cid,body.request,selected_job=body.job_id,parent_id=body.parent_id,dynamic=body.dynamic)
 
 @app.post('/api/agents')
 def create_agent(body:AgentEdit):return engine.agent_save(body.config.model_dump())
@@ -196,3 +203,16 @@ def source():
 @app.get('/')
 def index():return FileResponse(ROOT/'frontend/index.html')
 app.mount('/static',StaticFiles(directory=ROOT/'frontend'),name='static')
+
+@app.get('/api/python-tasks/{pid}')
+def python_task(pid:str):return engine.plot_get(pid)
+@app.post('/api/python-tasks/{pid}/action')
+def python_action(pid:str,body:PythonDecision):return engine.plot_action(pid,body.action,body.fingerprint)
+@app.get('/api/python-tasks/{pid}/image')
+def python_image(pid:str):return FileResponse(engine.plot_image(pid),media_type='image/png')
+
+from .tool_registry import ToolRegistration
+@app.get('/api/tools')
+def registered_tools():return {'registered':engine.tool_registrations(),'released':engine.catalog()['plugin']}
+@app.post('/api/tools')
+def register_tool(body:ToolRegistration):return engine.tool_register(body.model_dump())

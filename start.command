@@ -16,6 +16,9 @@ fi
 if [ -z "${EWB_WORKER_IMAGE:-}" ] && [ -f data/worker-image.txt ]; then
   export EWB_WORKER_IMAGE="$(cat data/worker-image.txt)"
 fi
+if [ -z "${EWB_PLOT_IMAGE:-}" ] && [ -f data/python-task-image.txt ]; then
+  export EWB_PLOT_IMAGE="$(cat data/python-task-image.txt)"
+fi
 if [ -f data/local-model.json ]; then
   if [ -z "${EWB_LOCAL_MODEL_URL:-}" ]; then
     export EWB_LOCAL_MODEL_URL="$("$EWB_PYTHON" -c 'import json; print(json.load(open("data/local-model.json"))["url"])')"

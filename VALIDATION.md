@@ -2,7 +2,7 @@
 
 ## Automated validation
 
-82 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+90 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 
@@ -50,3 +50,9 @@ Scheduling requires one running service process. There is no OS wake-up, automat
 ## Chart revision follow-up
 
 Request changes opens an inline revision prompt and retains report review. Conversation requests to add axis lines use a bounded, event-persisted display action; tests verify unchanged numerical results, unchanged review fingerprints and status, and no artifact claim without a result. Other chat replies are explicitly labelled as discussion without created artifacts. Axis formatting applies to the main comparison plot in the Workbench, not exported evidence or arbitrary generated charts. JavaScript syntax checks passed; target Windows browser validation remains pending.
+
+## Dynamic Python validation
+
+The runtime task flow replaces the earlier hardcoded axis-line shortcut. Tests cover draft-only behavior, syntax rejection, input retention across revisions, stale approvals, permission revocation, cross-conversation denial, execution failure, duplicate execution prevention, and user-supplied calculations without a preceding result. Tool registrations do not read their referenced paths.
+
+A local Qwen2.5-Coder 7B generated a statistics-and-plot script against synthetic data. After script inspection, browser approval executed it in the pinned Docker image and displayed JSON and PNG outputs. A follow-up generated a separate script revision with dotted mean lines, which also ran in Docker. Both versions matched independent mean and population-standard-deviation calculations to 1e-12. The model initially produced invalid syntax and later imprecise unit labels; syntax checks and human output review remain necessary. This is a focused integration test, not broad qualification of generated scientific code. Windows runtime validation remains pending.

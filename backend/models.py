@@ -18,7 +18,7 @@ class ModelGateway:
                 'frontier':{'configured':False,'model':'Disabled by offline policy'},
                 'boundary':'Internet model calls are disabled. Loopback is allowed; private LAN model IPs require explicit administrator approval.'}
 
-    def complete(self, scope, prompt, *, engineering_context=None, schema=None):
+    def complete(self, scope, prompt, *, engineering_context=None, schema=None, max_tokens=1500):
         if scope=='frontier' and engineering_context is not None:
             raise ValueError('Engineering context cannot be sent to a frontier model')
         if scope=='frontier': raise ValueError('Internet inference is disabled by the offline policy')
@@ -32,7 +32,7 @@ class ModelGateway:
                   {'role':'user','content':prompt}]
         if engineering_context is not None:
             messages.append({'role':'user','content':'Local authorized context: '+str(engineering_context)})
-        payload={'model':model,'messages':messages,'temperature':0.1,'max_tokens':1500}
+        payload={'model':model,'messages':messages,'temperature':0.1,'max_tokens':min(max_tokens,6000)}
         if schema:
             payload['response_format']={'type':'json_schema','json_schema':{'name':'workbench_response','strict':True,'schema':schema}}
         try:

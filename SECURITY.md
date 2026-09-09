@@ -36,3 +36,7 @@ Do not expose this service on a network interface. Authentication, multi-user pr
 ## Scheduled authority
 
 Only explicitly approved released comparisons can execute on a timer. Timing, current fixed-input scope, agent/skill revision, code hashes and storage roots are captured at approval. The scheduler rechecks this authority at dispatch and execution; it does not grant new model tools or network access. Generated-code skills are rejected. Scheduled results still require review. The scheduler is single-process and local; it is not a multi-user approval or distributed execution system.
+
+## Dynamic Python tasks
+
+Dynamic tasks use a separate pinned local numerical image and explicit code approval bound to the script, input snapshot, agent and image. Generated outputs are limited to JSON and optional PNG; arbitrary HTML and scripts are not served as executable artifacts. Every revision requires new approval. Successful execution validates output shape, not numerical correctness. The Tools registry stores references only, without granting execution or filesystem access. See PLOTTING.md for runtime limits and remaining production isolation work.

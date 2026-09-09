@@ -58,3 +58,40 @@ def run_script(code, inputs, directory):
     (Path(directory)/'execution.json').write_text(json.dumps(receipt,indent=2))
     payload['execution']=receipt
     return payload
+
+def run_plot_script(code, inputs, directory, image):
+    """Execute a reviewed general Python task; collect bounded JSON and optional PNG."""
+    if not image.startswith('sha256:'):raise ValueError('Pin a local Docker image ID')
+    command,env=local_docker_command();name='ewb-task-'+uuid.uuid4().hex
+    root=Path(directory)/name;ins=root/'inputs';outs=root/'outputs'
+    ins.mkdir(parents=True);outs.mkdir();outs.chmod(0o777)
+    (ins/'script.py').write_text(code);(ins/'data.json').write_text(json.dumps(inputs))
+    started=time.time()
+    try:
+        result=subprocess.run(command+['run','--rm','--pull=never','--name',name,'--network=none','--read-only',
+            '--user','65534:65534','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64',
+            '--cpus=1','--memory=512m','--memory-swap=512m','--ulimit','fsize=4194304:4194304','--log-driver=none',
+            '--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--env','MPLCONFIGDIR=/tmp/mpl','--env','MPLBACKEND=Agg',
+            '--mount',f'type=bind,src={ins.resolve()},dst=/inputs,readonly',
+            '--mount',f'type=bind,src={outs.resolve()},dst=/outputs',image,'python','-I','/inputs/script.py'],
+            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60,env=env)
+        if result.returncode:raise RuntimeError('Python task failed in Docker. Revise the script or check its dependencies.')
+    except subprocess.TimeoutExpired:
+        subprocess.run(command+['rm','-f',name],capture_output=True,timeout=10,env=env)
+        raise RuntimeError('Python task exceeded its 60 second limit')
+    target=outs/'result.json'
+    if target.is_symlink() or not target.is_file() or target.stat().st_size>1024*1024:raise RuntimeError('Task must write a bounded result.json')
+    payload=json.loads(target.read_text(),parse_constant=lambda x: (_ for _ in ()).throw(ValueError('Nonfinite JSON output')))
+    if not isinstance(payload,dict):raise RuntimeError('Task result must be a JSON object')
+    png=None;picture=outs/'plot.png'
+    if picture.exists() or picture.is_symlink():
+        if picture.is_symlink() or not picture.is_file() or picture.stat().st_size>4*1024*1024:raise RuntimeError('Invalid PNG artifact')
+        png=picture.read_bytes()
+        if len(png)<24 or png[:8]!=b'\x89PNG\r\n\x1a\n':raise RuntimeError('Expected a PNG image')
+        import struct
+        w,h=struct.unpack('>II',png[16:24])
+        if not 0<w<=2000 or not 0<h<=1600:raise RuntimeError('PNG dimensions exceed display limits')
+    receipt={'runtime':'Docker','image_id':image,'container_name':name,'exit_code':0,'network':'none','container_removed':True,
+             'started_at':started,'finished_at':time.time(),'script_sha256':hashlib.sha256(code.encode()).hexdigest(),
+             'result_sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'plot_sha256':hashlib.sha256(png).hexdigest() if png else None}
+    return png,payload,receipt
