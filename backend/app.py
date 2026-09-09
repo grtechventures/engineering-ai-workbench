@@ -281,3 +281,9 @@ async def upload_chunk(uid:str,request:Request,offset:int):
     return engine.upload_chunk(uid,offset,bytes(data))
 @app.post('/api/uploads/{uid}/finish')
 def upload_finish(uid:str):return engine.upload_finish(uid)
+
+from .configuration import MatlabConfig
+@app.get('/api/runtime/matlab')
+def matlab_get():return engine.matlab_get()
+@app.post('/api/runtime/matlab')
+def matlab_save(body:MatlabConfig):return engine.matlab_save(body.model_dump())

@@ -239,3 +239,7 @@ The Python worker image now includes openpyxl for `.xlsx` files. Calculation req
 The file worker includes `workbench_files.rows(file, sheet=None)` for XLSX/CSV/TSV and `text_blocks(file)` for DOCX/PDF/TXT/Markdown/JSON. It handles extensionless mounted filenames. A released bounded inspection runs inside Docker before generation and supplies actual row positions and document locations. The generated calculation must still select meaningful detail rows and avoid double counting; reader success does not establish analytical correctness.
 
 Unsupported extensions produce an explicit reader error. Legacy XLS/DOC, encrypted documents, and scanned-PDF OCR are not implemented. PDF text extraction does not guarantee table reconstruction. The standard runtime and review limits continue to apply. Unchanged failed/rejected Python revisions are blocked rather than offered as a repair.
+
+### MATLAB setup planning
+
+Models & runtime includes an editable MATLAB configuration for local or enterprise-server deployment, installation/server references, release, required toolboxes and manually recorded license-review status. It persists locally. This is setup metadata only: no MATLAB adapter, remote execution, license verification or entitlement is implied. Python remains the implemented calculation runtime.

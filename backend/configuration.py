@@ -68,3 +68,24 @@ class ConfigurationMixin:
         with self.lock:
             self.db.execute("INSERT OR REPLACE INTO settings VALUES('discovery_disabled','1')");self.db.commit()
         return {'message':'Resource inspection disabled. Administrator intervention is required to restore access.'}
+
+class MatlabConfig(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    location:Literal['local','enterprise_server']='enterprise_server'
+    installation:str=Field(default='',max_length=1000)
+    server_reference:str=Field(default='',max_length=1000)
+    release:str=Field(default='',max_length=100)
+    toolboxes:str=Field(default='',max_length=2000)
+    license_status:Literal['unknown','under_review','confirmed_by_admin']='unknown'
+    notes:str=Field(default='',max_length=1000)
+
+def matlab_get(self):
+    with self.lock:r=self.db.execute("SELECT value FROM settings WHERE key='matlab_config'").fetchone()
+    return {'config':json.loads(r[0]) if r else MatlabConfig().model_dump(),'execution_available':False,'status':'Adapter not connected; license entitlement not verified by Workbench'}
+def matlab_save(self,d):
+    value=MatlabConfig.model_validate(d)
+    with self.lock:
+        self.db.execute("INSERT OR REPLACE INTO settings VALUES('matlab_config',?)",(value.model_dump_json(),));self.db.commit()
+    return self.matlab_get()
+ConfigurationMixin.matlab_get=matlab_get
+ConfigurationMixin.matlab_save=matlab_save

@@ -21,3 +21,9 @@ def test_security_disable(eng):
     eng.discovery_disable()
     assert eng.configuration()['discovery_disabled']
     with pytest.raises(ValueError,match='disabled'):eng.resource_inspect('anything')
+
+def test_matlab_configuration_is_not_execution_authority(eng):
+    assert eng.matlab_get()['config']['license_status']=='unknown'
+    r=eng.matlab_save({'location':'enterprise_server','server_reference':'engineering-server','license_status':'confirmed_by_admin','toolboxes':'Simulink'})
+    assert not r['execution_available']
+    assert eng.matlab_get()['config']['toolboxes']=='Simulink'
