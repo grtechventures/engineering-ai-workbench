@@ -61,3 +61,62 @@ A restart marks running studies interrupted. Explicit reapproval reruns the boun
 5. Add adaptive experiments only for domain-qualified objectives, independent evaluators and explicit compute budgets.
 
 The current release provides no SSO, signed third-party plugin installation, shared departmental service, automatic fine-tuning, GBrain dependency, or adaptive background research. Released comparison scheduling is implemented; see SCHEDULING.md.
+
+## Harness portability and migration
+
+**Architecture requirement:** preserve engineering capabilities independently of
+any particular model, orchestrator, chat interface, or vendor harness. A future
+enterprise platform or another agent framework should be able to reuse approved
+adapters, validated methods, data controls, and evidence. This is a target
+architecture, not a claim that the prototype can switch frameworks today.
+
+The comparison workflow currently uses LangGraph; general generated-Python tasks
+have their own persistent task machinery. Both need an explicit orchestration
+boundary before another harness can replace them reliably.
+
+### Stable boundaries to establish
+
+- **Engineering tools:** versioned input/output schemas for approved operations,
+  explicit errors, capability discovery, and adapter conformance tests. Optional
+  MCP exposure wraps the same contracts; MCP alone does not supply authorization
+  or make framework-specific skills portable.
+- **Execution service:** a framework-independent job API for submit, status,
+  cancel, review, and artifact retrieval. Python and future MATLAB workers enforce
+  caller identity, approved data access, resource limits, and review decisions
+  independently of model instructions. Bind approval to the exact code, inputs,
+  runtime identity, and applicable policy. Use idempotency keys to prevent retries
+  or a migration from executing a job twice.
+- **Portable records:** versioned export schemas for conversations, agent and
+  skill definitions, tool references, job lineage, approvals, and artifact
+  manifests. Retain hashes, ownership, access labels, and originating versions.
+  Exclude secrets. Import must validate schemas and permissions; importing a
+  record must never imply permission to execute it. Native checkpoints are
+  engine-specific and are not assumed transferable.
+- **Interchangeable orchestration:** isolate vendor-specific model/tool-call and
+  planning logic behind an orchestration interface. Adapt instructions and skill
+  formats explicitly and evaluate their behavior. Preserve independent policy
+  enforcement even when using a vendor's memory or agent features.
+- **Client and channel separation:** the browser UI and future enterprise
+  messaging adapters use authenticated job/conversation APIs rather than a
+  framework's internal state. A replacement interface can use those same APIs.
+  The current Channels page is offline configuration and preview only.
+
+### Migration strategy
+
+Inventory dependencies and choose one representative, read-only engineering
+workflow. Connect the candidate harness to the existing approved tool and worker
+contracts in an isolated evaluation environment. Compare numerical results,
+provenance, permissions, approval binding, recovery, latency, and operating cost
+against a fixed test set. Shadow evaluation must not duplicate side effects.
+
+Roll out to a small cohort only after passing these checks. Keep in-flight jobs
+owned by their original engine until they finish or are explicitly cancelled.
+Do not transplant live checkpoints; restart a task only as an explicit new job
+with lineage and fresh applicable approvals. Preserve historical evidence for
+read access. Maintain a per-workflow routing switch and rollback path until the
+replacement is qualified. Retire the old engine only after record retention,
+export verification, and outstanding-job reconciliation are complete.
+
+The [roadmap](ROADMAP.md) defines the staged work and acceptance gates. Migration
+does not relax the offline policy: any new provider, data transfer, or network
+connection requires its own approval and enforcement.

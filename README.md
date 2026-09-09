@@ -10,7 +10,7 @@ A local engineering analysis workspace with conversational agents, reviewed tool
 - Revisit results, replay saved inputs, and compare bounded parameter trials.
 - Propose accepted workflows as reusable skills, with a separate release review.
 
-See [the walkthrough](DEMO_GUIDE.md), [architecture and storage](ARCHITECTURE.md), and [validation](VALIDATION.md).
+See [the walkthrough](DEMO_GUIDE.md), [architecture and storage](ARCHITECTURE.md), [roadmap and harness portability](ROADMAP.md), and [validation](VALIDATION.md).
 
 ## Windows 11 setup
 
