@@ -21,3 +21,10 @@ def test_axis_request_without_result_creates_no_artifact(eng):
     r=eng.conversation_send(c['id'],'Add X and Y axis lines')
     assert r['job_id'] is None
     assert 'No chart was changed' in r['conversation']['messages'][-1]['content']
+
+def test_xy_and_mean_request_does_not_claim_mean_was_added(eng):
+    a=eng.agent_save(BASE);c=eng.conversation_create(a['id'])
+    j=eng.create('Compare',background=False);eng.message_add(c['id'],'assistant','Ready',j)
+    r=eng.conversation_send(c['id'],'Add XY lines and a dotted mean average line')
+    assert r['job_id']==j
+    assert 'mean line was not added' in r['conversation']['messages'][-1]['content']

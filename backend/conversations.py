@@ -41,7 +41,7 @@ class ConversationsMixin:
         last_job=next((m['job_id'] for m in reversed(convo['messages']) if m['job_id']),None)
         job=self.get(last_job) if last_job else None
         # Chart formatting is a bounded display action, never generated Python.
-        axis_request = bool(re.search(r'\b(axis|axes)\b', text, re.I) and re.search(r'\b(add|show|draw|display)\b', text, re.I))
+        axis_request = bool(re.search(r'\b(axis|axes|xy|x[ -]y)\b', text, re.I) and re.search(r'\b(add|show|draw|display)\b', text, re.I))
         if axis_request:
             if not job or not job.get('result'):
                 response='A completed analysis is needed before adding axis lines. No chart was changed.'
@@ -49,6 +49,8 @@ class ConversationsMixin:
             else:
                 self.event(last_job,'chart_axes','X and Y axis lines enabled in the Workbench plot; numerical results unchanged')
                 response='Added X and Y axis lines to the plot in Analysis & evidence. This is a display change; no Python was generated or executed and numerical results are unchanged.'
+                if re.search(r'\b(mean|average)\b',text,re.I):
+                    response+=' A dotted mean line was not added: specify which series to average; this prototype currently supports axis lines only.'
                 target=last_job
             self.message_add(cid,'user',text)
             self.message_add(cid,'assistant',response,target)
