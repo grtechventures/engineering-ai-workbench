@@ -1,12 +1,20 @@
-# Engineering AI Workbench — functional prototype
+# Engineering AI Workbench
 
-**Version 0.2 adds saved agents and persistent conversations.** Start with a natural-language message, review the proposed plan, then discuss the results in the same conversation. The demonstration targets Windows 11. Configure the local model and Docker worker on the demo machine; machine settings and runtime data are excluded from the repository and portable archive. See [DEMO_GUIDE.md](DEMO_GUIDE.md) for the demonstration walkthrough.
+A local engineering analysis workspace with conversational agents, reviewed tools, persistent evidence, and reusable methods. The reference implementation uses synthetic data and a small C++ application to demonstrate integration with application-owned binary formats.
 
-A local browser workspace backed by **real LangGraph workflows, SQLite checkpoints, a compiled C++ application, and numerical Python analysis**. This demonstrates the architecture using synthetic engineering data. It is a single-user development prototype, not a production department deployment.
+**Version 0.3** adds approved knowledge retrieval, evidence storage independent of Git, linked replay, and bounded parameter studies. Engineers can use an installed copy or a source archive without a GitHub account. This is a single-user prototype; it is not a production shared service.
 
-## Start here — Windows 11
+- Ask questions and review a proposed analysis plan.
+- Execute released calculations or inspect generated Python before isolated execution.
+- Retrieve approved project notes with provenance; retire outdated knowledge.
+- Revisit results, replay saved inputs, and compare bounded parameter trials.
+- Propose accepted workflows as reusable skills, with a separate release review.
 
-The demo runs as a local browser application on a **Windows 11 machine**. Install Python 3.12 and a C++17 toolchain (Visual Studio Build Tools with the C++ workload and Windows SDK). Use **Developer PowerShell for Visual Studio** so the Microsoft `cl` compiler is available.
+See [the walkthrough](DEMO_GUIDE.md), [architecture and storage](ARCHITECTURE.md), and [validation](VALIDATION.md).
+
+## Windows 11 setup
+
+The application runs in a local browser on Windows 11. Install Python 3.12 and a C++17 toolchain (Visual Studio Build Tools with the C++ workload and Windows SDK). Use **Developer PowerShell for Visual Studio** so the Microsoft `cl` compiler is available.
 
 For the conversational and generated-Python demonstration, also install [Ollama for Windows](https://docs.ollama.com/windows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/). Run Docker in **Linux-container mode**, for example with its WSL 2 backend. The C++ gateway runs natively on Windows; the approved Python extension runs inside a Linux container.
 
@@ -29,7 +37,7 @@ Open **http://127.0.0.1:8765** in the Windows browser and keep the PowerShell wi
 
 The environment variables above last for the current PowerShell session. Set them again in a new session, or save the non-secret model and image settings using the files described below. On a fresh checkout, create an agent in **Agents**; agents and conversations from the development machine are not included.
 
-**Windows validation remains to be completed on the demo machine.** The existing automated and live integration checks were performed on macOS; the presence of a Windows launcher does not imply those checks have passed on Windows. Run the validation command below and rehearse both the comparison and Docker extension before presenting.
+**Windows validation remains pending.** The existing automated and live integration checks were performed on macOS; the presence of a Windows launcher does not imply those checks have passed on Windows. Run the validation command below and rehearse both the comparison and Docker extension before using the Windows installation.
 
 Manual Windows setup, if you need to run the launcher steps individually:
 
@@ -40,7 +48,7 @@ py -3.12 -m venv .venv
 ./.venv/Scripts/python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8765
 ```
 
-For optional macOS/Linux development, `bash start.command` remains available with Python 3.11+ and a C++17 compiler. Windows 11 is the demonstration platform.
+For optional macOS/Linux development, `bash start.command` remains available with Python 3.11+ and a C++17 compiler. Windows 11 is the primary setup documented here.
 
 The C++ build script seeds `data/run-a.ewb` and `data/run-b.ewb` only if either file is missing. The `.ewb` format is a deliberately simple, native-endian binary fixture owned by the C++ application. It is neither an existing proprietary format nor a cross-platform archival standard. Regenerate fixture files on a different architecture.
 
@@ -55,7 +63,7 @@ The C++ build script seeds `data/run-a.ewb` and `data/run-b.ewb` only if either 
 
 **Guided workflows** preserves the original explicit workflow picker. **Demo-mode agents** use deterministic routing and canned explanations; the interface labels them as having no model. **Local-mode agents** actually call the configured Ollama/OpenAI-compatible model for conversation, bounded planning and script proposals. There is no silent fallback to demo mode or cloud inference.
 
-The conversation can discuss and refine requests, but execution currently supports two methods only: comparing the fixed synthetic Run A/Run B and their centered five-sample moving-average difference. It cannot run arbitrary engineering analyses, accept new project files, install arbitrary tools or create unrestricted autonomous agents. Unsupported plans ask for clarification without executing tools.
+The conversation can discuss and refine requests, but execution currently supports two methods only: comparing the fixed synthetic Run A/Run B and their centered five-sample moving-average difference. A separate reviewed parameter-study flow explores smoothing windows using released code. It cannot run arbitrary engineering analyses, accept new project files, install arbitrary tools or create unrestricted autonomous agents. Unsupported plans ask for clarification without executing tools.
 
 ## Implemented versus integration work
 
@@ -64,13 +72,16 @@ The conversation can discuss and refine requests, but execution currently suppor
 | Interface | Persistent conversations, agent editor, chart, metrics, history, evidence downloads | Desktop packaging, broader accessibility and user research |
 | Orchestration | Actual LangGraph StateGraph, saved agent revisions, SQLite persistence, plan/code/result interrupts, retry/resume | Department queue, HA, richer cancellation and reconciliation |
 | C++ gateway | Compiled dummy app, binary input validation, CLI export, source viewer | Real Windows apps, DLL/COM/IPC adapters and app ownership |
-| Analysis | Real deterministic comparison and independent fixture tests | Your specific engineering methods and acceptance criteria |
+| Analysis | Real deterministic comparison and independent fixture tests | Additional engineering methods and acceptance criteria |
 | Generated Python | Structured script proposals, syntax checks, exact-artifact approval, Docker-only runner, reference validation and receipts | Production sandbox hardening, new-method qualification |
 | Local models | Configured local adapter for conversation, structured planning, drafting and explanations | Broader task benchmarks and model-profile selection per agent |
 | Frontier models | Separate OpenAI-compatible route with curated public questions only | Approved provider, credentials, and organizational approval |
 | Skills | Candidate, release, reuse, retirement of bundled workflow recipes | General packaging, automated qualification, release signatures |
 | Plugins | Bundled manifest and enable/disable enforcement | Signed distribution, compatibility upgrades/rollback, third-party extension isolation |
-| Knowledge | Explicit note proposal, scope label, approval, retirement | Identity-backed access controls and evaluated retrieval |
+| Knowledge | Sourced notes, revision-checked review, keyword retrieval into local conversation, retrieval history, retirement | Multiple projects, identity-backed access controls, semantic retrieval, retention automation |
+| Evidence and replay | Content-addressed JSON artifacts, saved input snapshots, linked replay with fresh reviews | Historical executable/runtime retention for exact environment reproduction |
+| Experiments | Reviewed smoothing-window sweep, trial/time bounds, independent numerical reference, result review | Adaptive hypothesis selection and domain-qualified experiment methods |
+| Storage | Local SQLite; configurable local or mounted-filesystem evidence folder; no Git requirement | Shared database/service, SharePoint, OneDrive, Google Drive providers |
 | Governance | Same-origin request checks, per-process request token, local bind, no remote tracing | Corporate SSO/RBAC, independent reviewers, immutable audit, retention enforcement |
 | MCP | Stable tool boundary demonstrated directly | No MCP server is implemented; add a wrapper after the real adapter is stable |
 | Scheduling | Persistent individual jobs | Recurring schedules and a managed departmental runner |
@@ -94,7 +105,7 @@ A non-loopback engineering endpoint also requires `EWB_APPROVED_ONPREM=1`. That 
 
 The local model must support JSON-schema structured chat responses for conversation, plans and script proposals. The launchers can also read non-secret settings from `data/local-model.json` with `url` and `model` keys; explicit environment variables take priority. Model credentials belong only in environment variables.
 
-With a local-mode agent, each conversation request includes up to eight recent messages (each capped at 1,200 characters), the current job status and metrics, and the agent purpose/tool list. Complete conversation history is retained locally for the UI; older turns are not all supplied to the model. This is context retention, not fine-tuning. Reviewed notes are currently a human reference library rather than automatic model memory.
+With a local-mode agent, each conversation request includes up to eight recent messages (each capped at 1,200 characters), the current job status and metrics, and the agent purpose/tool list. Complete conversation history is retained locally for the UI; older turns are not all supplied to the model. This is context retention, not fine-tuning. Up to five approved keyword-matched notes are also supplied to the local conversation model, with source and revision metadata. Retrievals are recorded separately from chat history. These notes are context, not execution authority. Retired notes are excluded from new retrievals; past conversations and audit records retain their historical content.
 
 With a local model configured, the moving-average workflow obtains a draft script from it, validates its JSON envelope and Python syntax, then pauses for human approval. Syntax validation does not prove correctness or safety. The exact code is displayed, fingerprinted with the input snapshots and worker image, and independently checked against the supported moving-average method after execution. For a completed comparison, **Draft local-model explanation** calls the local endpoint with computed metrics only. The returned prose does not alter the numerical result or acceptance record.
 
@@ -135,7 +146,8 @@ backend/app.py       Local API, request boundary, capability lifecycle
 backend/engine.py    LangGraph state machine and SQLite-backed jobs
 backend/agents.py    Saved revisions, plan selection and capability checks
 backend/conversations.py Persistent messages and bounded local-model actions
-backend/analysis.py  Released calculation and no-model draft fixture
+backend/analysis.py  Released calculations, bounded study and draft fixture
+backend/workspace.py Knowledge retrieval, evidence provider, replay and studies
 backend/models.py    Separate local and public model routes
 backend/worker.py    Docker-only approved-script execution
 legacy/              Dummy C++ application's source and build output
@@ -164,12 +176,14 @@ Tests use a fresh temporary data directory and real C++ exports. They cover nume
 - [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence)
 - [Ollama OpenAI-compatible API](https://docs.ollama.com/api/openai-compatibility)
 - [Qwen2.5-Coder 7B model card](https://ollama.com/library/qwen2.5-coder:7b)
-- The companion Engineering AI Workbench design and investment document describes the broader enterprise target. Features listed as remaining integration above are not silently represented as implemented here.
+- The architecture guide describes extension boundaries. Features listed as remaining integration are not implemented in this release.
 
-## Management and design artifacts
+## Reference documents
 
-- [Management presentation](docs/Engineering_AI_Workbench_Management_Proposal_Evolution.pptx)
-- [Design and investment plan](docs/Engineering_AI_Workbench_Design_and_Investment_Plan.docx)
-- [Interface concept](docs/Engineering_AI_Workbench_Interface_Concept.png)
+The optional presentation and design files in `docs/` describe earlier deployment proposals, not the current runtime contract. [ARCHITECTURE.md](ARCHITECTURE.md) and this README describe the implemented release. Review historical presentation/document contents separately before redistributing them.
 
-These documents describe the broader enterprise target. The implementation and validation sections above identify the smaller working prototype scope. Local conversations, checkpoints, model settings, generated job artifacts and compiled executables are excluded from version control.
+## Distribution
+
+GitHub is a source distribution option, not an application dependency. A maintainer can supply a ZIP through an approved internal software channel. The runtime never pushes conversations, knowledge, databases, or reports to a repository. Keep generated data and local credentials outside distributed packages.
+
+Repository visibility and team access are managed separately from the application. No public release or open-source license is introduced by this update; select licensing terms before advertising reuse rights for an eventual public release.

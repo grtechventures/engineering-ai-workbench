@@ -1,34 +1,34 @@
-# Prototype validation — version 0.2
+# Validation — version 0.3
 
-Verified on macOS, 7 September 2026, with the pinned Python 3.12 dependencies and LangGraph 1.2.11.
+## Automated validation
 
-## Automated checks
+48 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
-**38 tests passed.** One upstream Starlette/AnyIO deprecation warning remains. The tests cover:
+Coverage includes:
 
-- Real C++ binary export and independently calculated comparison values; corrupt files and mismatched units are rejected.
-- Persisted LangGraph checkpoints, restored plan/result reviews, cancellation, duplicate decisions, and stale script/result/plan approval rejection.
-- Agent creation and optimistic revisions; tool scope, disabled agents, revoked skill release, and changed configurations block execution.
-- Conversation persistence, local-only model routing, unsupported model actions, and explicit failure when the local endpoint is not configured.
-- Model drafts pause for exact-code review; malformed Python never executes, incorrect numerical outputs cannot become accepted reports, and changed worker images invalidate approval.
-- API request-origin/token checks, evidence export, curated read-only source, knowledge/skill lifecycle, and rejection of engineering context or additional fields on the public frontier route.
+- Real C++ exports and independent numerical references; corrupt files and unit mismatches.
+- LangGraph checkpoint recovery, plan/code/result review, stale and duplicate decisions.
+- Agent revisions, disabled agents/plugins, revoked skills and bounded model dispatch.
+- Same-origin/token checks and exclusion of engineering context from the frontier route.
+- Knowledge approval, source/revision retrieval, retirement, persisted retrieval history and local-only context delivery.
+- Replay after original input removal, current-input failure, lineage and fresh agent review.
+- Evidence generation before/after review, content hashes, invalid paths and tamper detection.
+- Study parameter limits, stale approvals, cancellation, plugin revocation, restart recovery, reference checks and time-budget stopping.
 
-## Live local model and execution
+These tests exercise a fixed synthetic reference domain. They are not qualification of arbitrary engineering methods, third-party plugins, or adversarial generated code.
 
-Ollama was already installed with Llama 3 and Mistral. Llama 3 was tried first and did not qualify for reliable script drafting in these cases. With the user's authorization, Qwen2.5-Coder 7B was installed through Ollama and configured as the local model.
+## Earlier live integration validation
 
-The actual model was exercised for greetings, conversational comparison requests, structured plans, result follow-ups, extension requests and structured Python drafting. Review caught a wrong edge-window divisor in an early draft. The drafting contract now supplies the precise reviewed window algorithm. A subsequent inspected model-generated script ran in the pinned Python 3.12 Docker image, and all **101 output points** matched the independent reference to **1e-10**.
+Version 0.2 was tested with a local Qwen2.5-Coder 7B model through Ollama and a pinned Python 3.12 Linux Docker image. A reviewed generated moving-average script produced 101 samples matching an independent reference to 1e-10. Retained Docker receipts identify image, script, exit status and cleanup. These were focused model integration checks, not a broad model-quality benchmark.
 
-The browser also completed a separate real model-driven comparison and extension, including plan review, actual C++ export, script review, Docker execution, numerical validation and result acceptance. The extension's retained receipt records a successful exit, image and script identity, timing and container cleanup. Docker Desktop 4.90.0 is installed; the model and Docker configuration are restored by the launcher.
+Expected fixture comparison: RMSE approximately 0.01327444 a.u.; maximum absolute difference approximately 0.02265 a.u.; 101 aligned pairs. No acceptance tolerance is defined.
 
-Expected base metrics: RMSE approximately **0.01327444 a.u.**, maximum absolute difference approximately **0.02265 a.u.**, **101 aligned sample pairs**. There is no engineering acceptance tolerance in the synthetic fixture.
+## Scope and limitations
 
-## Browser verification
+Windows runtime validation, mounted network-share behavior, cloud document providers, multiple users, SSO/RBAC, arbitrary analyses and live frontier-provider access remain unverified or unimplemented. Model summaries can be wrong; reviewed notes do not fine-tune the model. Historical replay uses current method/runtime versions. Parameter studies use released code in the service and check a cooperative deadline between trials; they are not autonomous code research.
 
-The in-app browser was used to create and rename an agent, save a new revision, disable/re-enable it, run conversational analyses, ask a result follow-up, inspect plan/code/result approvals and the Docker receipt, and reload the persisted conversation. Plugin enable/disable, reviewed project notes, and the read-only source view were also exercised. Browser testing found that the original JavaScript skill-naming prompt did not appear in the embedded browser; it was replaced by an inline form. A baseline comparison was proposed, released and rerun as a skill. Existing user jobs were backed up and preserved through the upgrade.
+Stop the service and back up the local data directory before upgrades. Version 0.3 adds SQLite tables/columns without deleting existing jobs or notes. Restore requires the database, checkpoint database and associated artifacts together; automatic backup/retention scheduling is not implemented.
 
-## Limits of this validation
+## Version 0.3 browser verification
 
-These are focused prototype checks, not a broad benchmark or production qualification. Small-model drafts were observed making errors, including an unsupported similarity interpretation; model prose remains explicitly labelled as a draft and does not change numerical results. Python syntax checks are not a proof of safety or correctness. Human review and method-specific reference checks remain necessary.
-
-Not validated live: a frontier provider, real engineering files, Windows compilation/runtime, SSO/RBAC, multiple users/workers, arbitrary plugins, network deployment, long-context reliability, and general autonomous engineering tasks. Retained notes do not automatically train or augment the model. Only the fixed comparison and five-sample moving-average extension are executable today.
+A separate synthetic workspace was exercised through the browser: starter-agent creation, conversation, plan approval, C++ comparison, report acceptance, study proposal, bounded execution, independent-reference results and study acceptance. Knowledge proposal, source display, approval, keyword search and conversation reference display were also checked. JavaScript syntax checks passed for all three application scripts. This browser pass used demo-mode routing; new live-model quality has not been benchmarked.

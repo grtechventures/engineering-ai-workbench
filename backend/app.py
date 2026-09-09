@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StrictInt
 from typing import Literal
 from .engine import Engine, ROOT, digest
 from .models import PUBLIC_PROMPTS
@@ -26,7 +26,16 @@ class Promote(Payload):
 class Memory(Payload):
     text:str=Field(min_length=1,max_length=500)
     scope:Literal['personal','project']='project'
-class Decision(Payload):action:Literal['approve','retire']
+    source:str=Field(default='User-authored note',min_length=1,max_length=300)
+    job_id:str|None=None
+class Decision(Payload):
+    action:Literal['approve','retire']
+    revision:int|None=None
+class Replay(Payload):mode:Literal['snapshot','current']='snapshot'
+class Study(Payload):
+    job_id:str
+    windows:list[StrictInt]=Field(default_factory=lambda:[1,3,5,9],min_length=1,max_length=8)
+    budget_seconds:int=Field(default=5,ge=1,le=10)
 class PluginSwitch(Payload):enabled:bool
 class Reason(Payload):topic:Literal['rmse','validation','sampling']
 class AgentEdit(Payload):
@@ -65,7 +74,7 @@ def bootstrap():
         jobs=[{k:x[k] for k in ['id','request','status','created','updated','error','extension']} for x in engine.db.execute('SELECT * FROM jobs ORDER BY created DESC')]
     return {'token':TOKEN,'jobs':jobs,'catalog':engine.catalog(),'models':engine.gateway.info(),'worker':worker_status(),
             'project':{'name':'Response validation','classification':'Synthetic data','runs':['Run A · baseline','Run B · revision']},
-            'identity':'Local demo reviewer','version':'0.2.0','agents':engine.list_agents(),'conversations':engine.conversation_list()}
+            'identity':'Local demo reviewer','version':'0.3.0','storage':engine.artifacts.info(),'agents':engine.list_agents(),'conversations':engine.conversation_list()}
 
 @app.post('/api/conversations')
 def new_conversation(body:ConversationStart):return engine.conversation_create(body.agent_id)
@@ -108,13 +117,20 @@ def explain(j:str):
     return {'text':text,'label':'Local model draft — review required'}
 @app.get('/api/jobs/{j}/report')
 def report(j:str):
-    item=engine.get(j)
-    if not item['result']:raise ValueError('No report available')
-    payload={'title':'Synthetic run comparison','status':item['status'],'request':item['request'],
-             'result':item['result'],'narrative':item['narrative'],'inputs':item['inputs'],'events':item['events'],
-             'agent':item.get('agent'),'plan':item.get('plan'),
-             'notice':'Prototype evidence. Synthetic data. Local demo identity is not enterprise authentication.'}
-    return Response(json.dumps(payload,indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="comparison-evidence.json"'})
+    return Response(json.dumps(engine.evidence(j),indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="comparison-evidence.json"'})
+@app.post('/api/jobs/{j}/replay')
+def replay_job(j:str,body:Replay):return engine.replay(j,body.mode)
+@app.get('/api/studies')
+def studies():return engine.study_list()
+@app.post('/api/studies')
+def study(body:Study):return engine.study_create(body.job_id,body.windows,body.budget_seconds)
+@app.post('/api/studies/{sid}/action')
+def study_action(sid:str,body:Action):return engine.study_act(sid,body.action,body.fingerprint)
+@app.get('/api/studies/{sid}/report')
+def study_report(sid:str):
+    return Response(json.dumps(engine.study_get(sid),indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="study-evidence.json"'})
+@app.get('/api/knowledge/search')
+def knowledge_search(q:str=''):return engine.knowledge_search(q[:2000])
 @app.post('/api/skills')
 def promote(body:Promote):
     item=engine.get(body.job_id)
@@ -141,16 +157,10 @@ def skill_run(sid:str):
     return {'id':engine.create('Run skill: '+row['name'],extension)}
 @app.post('/api/knowledge')
 def memory(body:Memory):
-    mid=uuid.uuid4().hex
-    with engine.lock:
-        engine.db.execute('INSERT INTO knowledge VALUES(?,?,?,?,?)',(mid,body.text,'proposed',body.scope,None));engine.db.commit()
-    return {'id':mid}
+    return engine.knowledge_propose(body.text,body.scope,body.source,body.job_id)
 @app.post('/api/knowledge/{mid}/decision')
 def memory_decision(mid:str,body:Decision):
-    with engine.lock:
-        row=engine.db.execute('SELECT * FROM knowledge WHERE id=?',(mid,)).fetchone()
-        if not row:raise KeyError(mid)
-        engine.db.execute('UPDATE knowledge SET status=? WHERE id=?',('approved' if body.action=='approve' else 'retired',mid));engine.db.commit()
+    engine.knowledge_decide(mid,body.action,body.revision)
     return {'ok':True}
 @app.post('/api/plugin')
 def plugin(body:PluginSwitch):

@@ -13,6 +13,7 @@ from .models import ModelGateway
 from .worker import run_script, worker_status
 from .agents import AgentsMixin
 from .conversations import ConversationsMixin
+from .workspace import WorkspaceMixin
 
 ROOT=Path(__file__).resolve().parents[1]
 class ScriptDraft(BaseModel):
@@ -22,10 +23,10 @@ def digest(value):
     return hashlib.sha256((value if isinstance(value,bytes) else json.dumps(value,sort_keys=True).encode())).hexdigest()
 class State(TypedDict,total=False):
     job_id:str; request:str; extension:bool; inputs:dict; result:dict; script:str
-    agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
+    snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
     fingerprint:str; draft_source:str; approved:bool; approved_fingerprint:str; accepted:bool; image:str; narrative:str
 
-class Engine(AgentsMixin,ConversationsMixin):
+class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
     def __init__(self,data=None):
         self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'));self.data.mkdir(parents=True,exist_ok=True)
         self.lock=threading.RLock();self.run_lock=threading.Lock()
@@ -40,6 +41,7 @@ class Engine(AgentsMixin,ConversationsMixin):
         ''')
         self.init_agents()
         self.init_conversations()
+        self.init_workspace()
         self.db.execute("INSERT OR IGNORE INTO settings VALUES('plugin','enabled')")
         self.db.execute("INSERT OR IGNORE INTO skills VALUES('compare-runs','Compare analysis runs','Compare two exported response curves with units, alignment, and provenance checks.','released','1.0.0',NULL)")
         self.db.execute("UPDATE jobs SET status='interrupted', error='Service restarted. Resume from the persisted checkpoint.' WHERE status IN ('running','queued')")
@@ -61,6 +63,9 @@ class Engine(AgentsMixin,ConversationsMixin):
 
     def agent_plan(self,s):
         plan=self.make_plan(s)
+        if s.get('snapshot') and plan.get('steps'):
+            plan['steps'][0]='Reuse the parent analysis input snapshots'
+            plan['input_snapshot_hash']=digest(s['snapshot'])
         self.event(s['job_id'],'agent_plan',plan['planner']+': '+plan['reason'])
         with self.lock:
             self.db.execute('UPDATE jobs SET extension=? WHERE id=?',(int(plan['workflow']=='extension'),s['job_id']));self.db.commit()
@@ -87,6 +92,10 @@ class Engine(AgentsMixin,ConversationsMixin):
     def export(self,s):
         self.check_agent(s,'extension' if s['extension'] else 'compare')
         if not self.enabled(): raise ValueError('Run Comparison plugin is disabled')
+        if s.get('snapshot'):
+            compare(s['snapshot']['a'],s['snapshot']['b'])
+            self.event(s['job_id'],'export','Using persisted C++ export snapshots from the parent analysis')
+            return {'inputs':s['snapshot']}
         self.event(s['job_id'],'export','Reading synthetic binary files through the C++ application')
         exe=ROOT/'legacy'/'build'/('engineering-demo.exe' if os.name=='nt' else 'engineering-demo')
         inputs={}
@@ -163,7 +172,7 @@ class Engine(AgentsMixin,ConversationsMixin):
         if answer.get('fingerprint')!=digest(s['result']): raise ValueError('Result changed since review')
         self.event(s['job_id'],'review','Report accepted by local demo reviewer' if answer.get('approve') else 'Changes requested by local demo reviewer')
         return {'accepted':bool(answer.get('approve'))}
-    def create(self,request,extension=False,background=True,agent=None):
+    def create(self,request,extension=False,background=True,agent=None,snapshot=None,parent_id=None,replay_mode=None):
         if not self.enabled(): raise ValueError('Enable the Run Comparison plugin first')
         if agent:
             self.check_agent({'agent':agent})
@@ -171,8 +180,12 @@ class Engine(AgentsMixin,ConversationsMixin):
         j=uuid.uuid4().hex;now=time.time()
         value={'job_id':j,'request':request,'extension':extension}
         if agent:value['agent']=agent
+        if snapshot:value['snapshot']=snapshot
         with self.lock:
             self.db.execute('INSERT INTO jobs(id,request,status,created,updated,error,extension,agent_json,initial_state) VALUES(?,?,?,?,?,?,?,?,?)',(j,request,'queued',now,now,None,int(extension),json.dumps(agent) if agent else None,json.dumps(value)));self.db.commit()
+        if parent_id:
+            with self.lock:
+                self.db.execute('INSERT INTO lineage VALUES(?,?,?)',(j,parent_id,replay_mode)); self.db.commit()
         self.event(j,'request',request)
         if background: threading.Thread(target=self.drive,args=(j,value),daemon=True).start()
         else:self.drive(j,value)
@@ -191,6 +204,7 @@ class Engine(AgentsMixin,ConversationsMixin):
                     self.status(j,kind)
                 else:
                     self.status(j,'needs_input' if snap.values.get('needs_input') else 'accepted' if snap.values.get('accepted') else 'changes_requested' if 'accepted' in snap.values else 'rejected')
+                if snap.values.get('result'): self.evidence(j)
             except Exception as e:
                 self.status(j,'blocked',str(e)[:500]);self.event(j,'blocked',str(e)[:500])
     def get(self,j):

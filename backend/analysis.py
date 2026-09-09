@@ -39,3 +39,32 @@ Path('/outputs/result.json').write_text(json.dumps({
     'unit': inputs['a']['y_unit']
 }))
 '''
+
+def smoothing_study(inputs, windows, budget_seconds):
+    """Released parameter sweep, not generated code or a learned optimizer."""
+    import time
+    started=time.monotonic()
+    baseline=compare(inputs['a'],inputs['b'])
+    delta=[p[1] for p in baseline['delta']]
+    trials=[]
+    for width in windows:
+        if time.monotonic()-started>=budget_seconds: break
+        radius=width//2
+        smooth=[sum(delta[max(0,i-radius):min(len(delta),i+radius+1)]) /
+                len(delta[max(0,i-radius):min(len(delta),i+radius+1)]) for i in range(len(delta))]
+        # Prefix-sum implementation provides an independent numerical cross-check.
+        prefix=[0.0]
+        for value in delta: prefix.append(prefix[-1]+value)
+        reference=[(prefix[min(len(delta),i+radius+1)]-prefix[max(0,i-radius)]) /
+                   (min(len(delta),i+radius+1)-max(0,i-radius)) for i in range(len(delta))]
+        if any(not math.isclose(a,b,rel_tol=1e-9,abs_tol=1e-10) for a,b in zip(smooth,reference)):
+            raise ValueError('Study reference validation failed')
+        trials.append({'window':width,'samples':len(smooth),
+                       'distortion_rmse':math.sqrt(sum((a-b)**2 for a,b in zip(smooth,delta))/len(delta)),
+                       'roughness_rms':math.sqrt(sum((b-a)**2 for a,b in zip(smooth,smooth[1:]))/(len(smooth)-1)),
+                       'points':[[baseline['delta'][i][0],v] for i,v in enumerate(smooth)],
+                       'reference_passed':True})
+    return {'baseline_metrics':baseline['metrics'],'trials':trials,'units':baseline['units'],
+            'stop_reason':'completed' if len(trials)==len(windows) else 'time_budget',
+            'elapsed_seconds':time.monotonic()-started,
+            'interpretation':'Lower roughness may hide real features. Distortion measures change from the raw difference, not physical accuracy. No winner is selected.'}
