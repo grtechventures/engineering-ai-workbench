@@ -1,16 +1,18 @@
 # Engineering AI Workbench: demonstration guide
 
-## Start on this Mac
+## Start on Windows 11
 
-1. Open **Docker Desktop** and wait for its engine to start. Open **Ollama** if it is not already running.
-2. Double-click **start.command** in this folder. Leave that Terminal window open. If the Workbench is already running, use the existing instance instead.
-3. Open [Engineering AI Workbench](http://127.0.0.1:8765/) and refresh once after an upgrade.
+1. Complete the [Windows 11 setup in README.md](README.md#start-here--windows-11): Python 3.12, a C++17 compiler, Ollama, Docker Desktop in Linux-container mode, the demo model and a pinned worker image.
+2. Open **Docker Desktop** and wait for its engine to start. Open **Ollama** if it is not already running.
+3. Open **Developer PowerShell for Visual Studio** in the repository folder, set the model and worker environment variables from the README, and run **`./start.ps1`**. Leave that window open. If the Workbench is already running, use the existing instance.
+4. Open [Engineering AI Workbench](http://127.0.0.1:8765/) in the Windows browser.
+5. Run the README's validation command and rehearse the comparison and reviewed Docker extension on this Windows 11 machine before the presentation. Previous integration checks were performed on macOS, not Windows.
 
-The saved configuration selects **Qwen2.5-Coder 7B through local Ollama** and a pinned Python 3.12 Docker image. No cloud account is needed. The first model response may be slower while weights load into memory.
+The example configuration uses **Qwen2.5-Coder 7B through local Ollama** and a pinned Python 3.12 Linux Docker image. Configure these on the demo machine; the repository does not include downloaded models, machine settings, saved agents or conversation history. No cloud account is needed. The first model response may be slower while weights load into memory.
 
 ## Present the conversational flow
 
-Open **Agents**, choose **Engineering Analysis Agent**, and click **Start conversation**. You can also create an agent with your own name and purpose, select local mode, and assign its released skills and permitted tools.
+Open **Agents** and create **Engineering Analysis Agent** (or use **Create starter agent**), select local mode, and assign its released skills and permitted tools. Then click **Start conversation**. On subsequent launches you can reuse that saved agent.
 
 Send these messages one at a time:
 
