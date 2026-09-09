@@ -2,7 +2,7 @@
 
 ## Automated validation
 
-80 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+82 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 
@@ -46,3 +46,7 @@ Tests cover explicit recipe approval, stale approvals, agent/skill/method revoca
 A real once-only schedule was created and approved through the browser in an isolated synthetic workspace. It dispatched at its scheduled time without a second plan prompt, exported both inputs through the C++ gateway, produced 101 validated comparison samples, and stopped for report review. The report was then accepted. This pass used the released deterministic recipe, without a model or Docker. Unchanged startup was separately verified to preserve the compiled executable's timestamp and hash.
 
 Scheduling requires one running service process. There is no OS wake-up, automatic whole-job retry, or distributed scheduler. Windows execution remains to be validated; timezone fallback is covered by automated tests. Version 0.4 adds scheduling tables and requires the pinned tzdata dependency to be provisioned before offline startup.
+
+## Chart revision follow-up
+
+Request changes opens an inline revision prompt and retains report review. Conversation requests to add axis lines use a bounded, event-persisted display action; tests verify unchanged numerical results, unchanged review fingerprints and status, and no artifact claim without a result. Other chat replies are explicitly labelled as discussion without created artifacts. Axis formatting applies to the main comparison plot in the Workbench, not exported evidence or arbitrary generated charts. JavaScript syntax checks passed; target Windows browser validation remains pending.
