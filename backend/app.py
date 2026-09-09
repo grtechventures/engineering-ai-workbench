@@ -73,7 +73,7 @@ async def local_boundary(request:Request,call_next):
     if request.method not in ('GET','HEAD'):
         if request.headers.get('x-workbench-token')!=TOKEN:
             return JSONResponse({'detail':'Reload the workbench to authorize this local request'},status_code=403)
-        if int(request.headers.get('content-length','0'))>20000:
+        if int(request.headers.get('content-length','0'))>(1024**2 if request.url.path.endswith('/chunk') else 20000):
             return JSONResponse({'detail':'Request is too large'},status_code=413)
     response=await call_next(request)
     response.headers['Cache-Control']='no-store'
@@ -268,3 +268,16 @@ from .attachments import Attachment
 def attachment_add(cid:str,body:Attachment):return engine.attachment_add(cid,body.model_dump())
 @app.post('/api/conversations/{cid}/attachments/clear')
 def attachment_clear(cid:str):return engine.attachment_clear(cid)
+
+from .attachments import UploadStart
+@app.post('/api/conversations/{cid}/uploads')
+def upload_start(cid:str,body:UploadStart):return engine.upload_start(cid,body.model_dump())
+@app.post('/api/uploads/{uid}/chunk')
+async def upload_chunk(uid:str,request:Request,offset:int):
+    data=bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data)>1024**2:raise ValueError('Chunk exceeds 1 MB')
+    return engine.upload_chunk(uid,offset,bytes(data))
+@app.post('/api/uploads/{uid}/finish')
+def upload_finish(uid:str):return engine.upload_finish(uid)

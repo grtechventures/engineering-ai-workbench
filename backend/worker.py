@@ -59,7 +59,7 @@ def run_script(code, inputs, directory):
     payload['execution']=receipt
     return payload
 
-def run_plot_script(code, inputs, directory, image):
+def run_plot_script(code, inputs, directory, image, mounts=None):
     """Execute a reviewed general Python task; collect bounded JSON and optional PNG."""
     if not image.startswith('sha256:'):raise ValueError('Pin a local Docker image ID')
     command,env=local_docker_command();name='ewb-task-'+uuid.uuid4().hex
@@ -73,7 +73,7 @@ def run_plot_script(code, inputs, directory, image):
             '--cpus=1','--memory=512m','--memory-swap=512m','--ulimit','fsize=4194304:4194304','--log-driver=none',
             '--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--env','MPLCONFIGDIR=/tmp/mpl','--env','MPLBACKEND=Agg',
             '--mount',f'type=bind,src={ins.resolve()},dst=/inputs,readonly',
-            '--mount',f'type=bind,src={outs.resolve()},dst=/outputs',image,'python','-I','/inputs/script.py'],
+            '--mount',f'type=bind,src={outs.resolve()},dst=/outputs',*(mounts or []),image,'python','-I','/inputs/script.py'],
             stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60,env=env)
         if result.returncode:raise RuntimeError('Python task failed in Docker. Revise the script or check its dependencies.')
     except subprocess.TimeoutExpired:

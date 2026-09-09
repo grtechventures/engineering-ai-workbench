@@ -41,7 +41,7 @@ def test_stale_approval_and_revoked_agent(runtime):
 
 def test_runtime_results_and_no_duplicate_execution(runtime,monkeypatch):
     e,c,j=runtime;p=e.plot_propose(c['id'],'Calculate mean',j);calls=[]
-    def worker(*args):calls.append(args);return None,{'mean':1},{'runtime':'Docker'}
+    def worker(*args,**kwargs):calls.append(args);return None,{'mean':1},{'runtime':'Docker'}
     monkeypatch.setattr('backend.plotting.run_plot_script',worker)
     out=e.plot_action(p['id'],'approve',p['fingerprint'],False)
     assert out['status']=='result_review' and out['output']=={'mean':1}
@@ -62,7 +62,7 @@ def test_invalid_python_is_not_a_proposal(runtime,monkeypatch):
 
 def test_worker_failure_is_visible_and_can_be_revised(runtime,monkeypatch):
     e,c,j=runtime;p=e.plot_propose(c['id'],'Calculate',j)
-    def fail(*a):raise RuntimeError('Missing output')
+    def fail(*a,**kwargs):raise RuntimeError('Missing output')
     monkeypatch.setattr('backend.plotting.run_plot_script',fail)
     r=e.plot_action(p['id'],'approve',p['fingerprint'],False)
     assert r['status']=='failed' and 'Missing output' in r['error']

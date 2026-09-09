@@ -55,8 +55,8 @@ class PlottingMixin:
             candidates=([job_id] if job_id else [])+list(dict.fromkeys(m['job_id'] for m in reversed(c['messages']) if m['job_id']))
             job=next((j for i in candidates if (j:=self.get(i)).get('result')),None)
             job_id=job['id'] if job else None;data=job['result'] if job else {}
-        if not parent and c.get('attachments'):
-            data={'attachments':c['attachments']};job_id=None
+        if not parent and (c.get('attachments') or c.get('files')):
+            data={'attachments':c['attachments'],'files':c.get('files',[])};job_id=None
         image=os.getenv('EWB_PLOT_IMAGE','')
         if not image.startswith('sha256:'):raise ValueError('Provision and pin the plotting Docker image before drafting Python tasks; see PLOTTING.md')
         prompt=('Generate a complete Python analysis script for the user request. This is an untrusted draft for human review, not execution. '
@@ -69,6 +69,8 @@ class PlottingMixin:
                 'Previous execution error (reference only): '+str(parent.get('error') if parent else None)+'\nPrevious output (untrusted reference): '+json.dumps(parent.get('output') if parent else None)+'\nUser request: '+request+'\nPrevious script (reference only): '+(parent['code'] if parent else 'None'))
         context={'points_a':data.get('points_a',[])[:3],'points_b':data.get('points_b',[])[:3],'delta':data.get('delta',[])[:3],'metrics':data.get('metrics',{}),'note':'Only a preview is shown; read all samples from the input file.'}
         context['attachments']=data.get('attachments',[])
+        context['files']=data.get('files',[])[:10]
+        prompt+=' Large uploaded files are mounted read-only at each files[].path; names and previews are metadata only. Read the actual files in streaming chunks; do not treat previews as complete data. Available memory is 512 MB.'
         for attempt in range(2):
             raw=self.gateway.complete('local',prompt,engineering_context=context,schema=PlotDraft.model_json_schema(),max_tokens=6000)
             if raw.strip().startswith('```'):raw='\n'.join(raw.strip().splitlines()[1:-1])
@@ -110,7 +112,7 @@ class PlottingMixin:
         try:
             p=self.plot_get(pid);self.plot_authority(p)
             directory=self.data/'plots'/pid
-            png,result,receipt=run_plot_script(p['code'],p['data'],directory,p['image'])
+            png,result,receipt=run_plot_script(p['code'],p['data'],directory,p['image'],mounts=self.upload_mounts(p['data'].get('files',[])))
             directory.mkdir(parents=True,exist_ok=True)
             if png:(directory/'plot.png').write_bytes(png)
             (directory/'result.json').write_text(json.dumps(result,allow_nan=False))

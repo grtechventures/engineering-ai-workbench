@@ -51,6 +51,7 @@ class Engine(AttachmentsMixin,ConfigurationMixin,ResourcesMixin,AuthoredSkillsMi
         self.init_agents()
         self.init_conversations()
         self.init_attachments()
+        self.init_uploads()
         self.init_workspace()
         self.init_schedules()
         self.init_plots()
