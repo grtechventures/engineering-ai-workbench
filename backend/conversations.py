@@ -47,6 +47,8 @@ class ConversationsMixin:
         job=self.get(last_job) if last_job else None
         # Route explicit runtime work and selected artifact revisions to reviewed Python.
         wants_python=dynamic or parent_id or bool(re.search(r'\b(plot|chart|axis|axes|xy|histogram|regression|integral|standard deviation)\b',text,re.I))
+        if (convo.get('files') or convo.get('attachments')) and re.search(r'\b(total|sum|calculate|work out|average|count|sales|tax|data quality)\b',text,re.I):
+            wants_python=True
         if wants_python:
             proposal=self.plot_propose(cid,text,selected_job,parent_id)
             self.message_add(cid,'user',text)
@@ -60,7 +62,7 @@ class ConversationsMixin:
                     'or a five-sample moving-average difference between the two provided synthetic runs. All runs will require human plan approval. '
                     'The project already contains Run A and Run B, ready through the C++ export tool; the user does not need to upload or provide them. '
                     'For an explicit request to compare these runs or smooth their difference, choose run immediately so the plan can be reviewed. '
-                    'Choose python for requested calculations, tables, plots or revisions beyond the released comparison and smoothing routines. Choose reply for questions, greetings, explanations, and unsupported data access. Do not promise capabilities beyond these tools. '
+                    'Choose python for requested calculations, tables, plots or revisions beyond the released comparison and smoothing routines. Choose python for requests to inspect or calculate from uploaded files, including Excel workbooks. The Python worker can read mounted files. Choose reply for greetings and conceptual explanations. Do not promise capabilities beyond these tools. '
                     'Measurement rules: reported differences and RMSE are in arbitrary units (a.u.), never percentages. No normalization baseline or acceptance tolerance exists. '
                     'RMSE is sqrt(mean(squared differences)), not the arithmetic average of signed differences. Do not infer an engineering pass/fail conclusion. '
                     'Do not describe the error or similarity as small, moderate, large, good or acceptable: a reference scale is not supplied. '

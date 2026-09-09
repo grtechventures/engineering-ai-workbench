@@ -229,3 +229,7 @@ Questions receive bounded previews of the first ten files. Reviewed Python tasks
 Clear attachments detaches files from subsequent tasks. Existing task snapshots retain their files. Detached and unfinished files continue consuming storage; automatic garbage collection and resumable browser uploads are not implemented. Administrators should manage storage with the service stopped and preserve files referenced by evidence. Earlier small inline attachments remain readable for compatibility.
 
 Validation: 110 automated checks pass, and an actual Docker task streamed a 201 MiB upload and verified all 210,763,776 bytes. This validates disk-backed upload assembly and mounted execution; browser large-file upload QA and Windows runtime validation remain outstanding.
+
+### Excel calculations
+
+The Python worker image now includes openpyxl for `.xlsx` files. Calculation requests with attached files route to reviewed Python tasks. A released reader inspects a bounded workbook preview inside Docker before drafting code; it does not run macros, follow external links, or recalculate Excel formulas. Calculations must disclose cached/missing formula values and avoid double-counting subtotal and total rows. Legacy `.xls` and password-protected workbooks are not supported. Rebuild and select the updated Python worker image when upgrading an existing installation.
