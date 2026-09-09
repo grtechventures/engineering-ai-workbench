@@ -245,3 +245,20 @@ def resource_add(body:ResourceDraft):return engine.resource_add(body.model_dump(
 def resource_inspect(rid:str):return engine.resource_inspect(rid)
 @app.post('/api/resources/{rid}/remove')
 def resource_remove(rid:str):return engine.resource_remove(rid)
+
+from .configuration import Connection,Runtime
+class ConnectionAction(Payload):action:Literal['test','activate']
+@app.get('/api/configuration')
+def configuration():return engine.configuration()
+@app.post('/api/connections')
+def connection_save(body:Connection):return engine.connection_save(body.model_dump())
+@app.post('/api/connections/{cid}')
+def connection_edit(cid:str,body:Connection):return engine.connection_save(body.model_dump(),cid)
+@app.post('/api/connections/{cid}/action')
+def connection_action(cid:str,body:ConnectionAction):return engine.connection_action(cid,body.action)
+@app.post('/api/runtime')
+def runtime_save(body:Runtime):return engine.runtime_save(body.model_dump())
+@app.post('/api/runtime/test')
+def runtime_test():return engine.runtime_test()
+@app.post('/api/security/disable-discovery')
+def disable_discovery():return engine.discovery_disable()

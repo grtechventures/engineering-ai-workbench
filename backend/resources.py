@@ -62,6 +62,7 @@ class ResourcesMixin:
             self.db.execute('DELETE FROM resources WHERE id=?',(rid,));self.db.commit()
         return {'ok':True}
     def resource_inspect(self,rid):
+        if self.db.execute("SELECT 1 FROM settings WHERE key='discovery_disabled'").fetchone():raise ValueError("Resource inspection disabled by security settings")
         with self.lock:
             row=self.db.execute('SELECT payload FROM resources WHERE id=?',(rid,)).fetchone()
         if not row:raise ValueError('Resource not found')

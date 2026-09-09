@@ -1,3 +1,4 @@
+from .configuration import ConfigurationMixin
 from .resources import ResourcesMixin
 from .authored_skills import AuthoredSkillsMixin
 from .tool_registry import ToolRegistryMixin
@@ -31,7 +32,7 @@ class State(TypedDict,total=False):
     schedule_id:str; schedule_fingerprint:str; snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
     fingerprint:str; draft_source:str; approved:bool; approved_fingerprint:str; accepted:bool; image:str; narrative:str
 
-class Engine(ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
+class Engine(ConfigurationMixin,ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
     def __init__(self,data=None):
         self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'))
         if str(self.data).startswith(('\\\\','//')): raise ValueError('Database state must be on local disk, not a UNC network path')
@@ -61,6 +62,7 @@ class Engine(ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,
         self.cpconn=sqlite3.connect(self.data/'checkpoints.sqlite',check_same_thread=False)
         self.checkpointer=SqliteSaver(self.cpconn)
         self.gateway=ModelGateway()
+        self.init_configuration()
         graph=StateGraph(State)
         for name,node in [('agent_plan',self.agent_plan),('plan_review',self.plan_review),('export',self.export),('prepare',self.prepare),('code_review',self.code_review),('execute',self.execute),('result_review',self.result_review)]:
             graph.add_node(name,node)

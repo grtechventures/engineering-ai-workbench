@@ -213,3 +213,9 @@ Skills library supports direct drafts and Markdown/JSON import without an accept
 ## Source and data locations
 
 Source discovery accepts registered code folders/files. Data sources records dataset locations, formats and reader references, with bounded CSV preview. Access is denied unless an administrator configures approved roots. See [Source and data locations](DATA_SOURCES.md) for limits and setup. These registrations do not yet attach inputs or source context to model tasks.
+
+## Models, runtime and security settings
+
+Models & runtime supports saved Ollama, LM Studio and other OpenAI-compatible profiles: add/edit, test, and activate. All local-mode agents share the active connection; separate per-agent endpoints are not implemented. Editing a profile requires activating it again. Profile settings persist in SQLite. Endpoint validation still blocks public internet destinations; LAN model IPs require server-side approval. API credentials remain server-managed and are not stored in profiles.
+
+Docker settings verify and save full local image IDs for comparison and dynamic Python workers. The diagnostic checks the local daemon, not analysis correctness. Images are never downloaded and remote Docker contexts are rejected. Changes can invalidate pending approvals. The Security & permissions page links to operational permission controls and can persistently disable resource inspection. An administrator can restore inspection by removing the `discovery_disabled` setting from the workspace database while the service is stopped; approved filesystem roots are still required. Enterprise positioning belongs in deployment documentation rather than these settings.
