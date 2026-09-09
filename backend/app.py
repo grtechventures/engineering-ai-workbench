@@ -262,3 +262,9 @@ def runtime_save(body:Runtime):return engine.runtime_save(body.model_dump())
 def runtime_test():return engine.runtime_test()
 @app.post('/api/security/disable-discovery')
 def disable_discovery():return engine.discovery_disable()
+
+from .attachments import Attachment
+@app.post('/api/conversations/{cid}/attachments')
+def attachment_add(cid:str,body:Attachment):return engine.attachment_add(cid,body.model_dump())
+@app.post('/api/conversations/{cid}/attachments/clear')
+def attachment_clear(cid:str):return engine.attachment_clear(cid)

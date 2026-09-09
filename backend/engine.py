@@ -1,3 +1,4 @@
+from .attachments import AttachmentsMixin
 from .configuration import ConfigurationMixin
 from .resources import ResourcesMixin
 from .authored_skills import AuthoredSkillsMixin
@@ -32,7 +33,7 @@ class State(TypedDict,total=False):
     schedule_id:str; schedule_fingerprint:str; snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
     fingerprint:str; draft_source:str; approved:bool; approved_fingerprint:str; accepted:bool; image:str; narrative:str
 
-class Engine(ConfigurationMixin,ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
+class Engine(AttachmentsMixin,ConfigurationMixin,ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
     def __init__(self,data=None):
         self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'))
         if str(self.data).startswith(('\\\\','//')): raise ValueError('Database state must be on local disk, not a UNC network path')
@@ -49,6 +50,7 @@ class Engine(ConfigurationMixin,ResourcesMixin,AuthoredSkillsMixin,ToolRegistryM
         ''')
         self.init_agents()
         self.init_conversations()
+        self.init_attachments()
         self.init_workspace()
         self.init_schedules()
         self.init_plots()
