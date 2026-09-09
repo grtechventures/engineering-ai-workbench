@@ -16,3 +16,6 @@ legacy/build/
 .DS_Store
 ~$*
 *.log
+
+# Private planning artifacts must not be published.
+/docs/

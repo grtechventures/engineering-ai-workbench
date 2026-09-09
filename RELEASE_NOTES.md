@@ -9,7 +9,6 @@ This release is for evaluation and adaptation. It is a single-user local applica
 - 132 automated checks passed on the development environment. A synthetic scene rendered after Docker execution, and a live worker failure returned its Python diagnostic. These checks do not establish general model reliability. Windows runtime validation remains pending.
 - MATLAB and Channels are configuration/preview only. Live MATLAB, Teams and Slack execution/messaging are not connected. Tools registration does not install adapters; most database readers remain integration work. MCP is planned, not implemented.
 - Security controls are prototype controls, not certification or a jailbreak-proof guarantee. Keep the service on loopback. Do not expose it as a shared service without authentication, authorization and deployment hardening. Validate analyses independently before engineering use.
-- Historical decks/design documents describe possible enterprise architectures, budgets and roadmap options. They are illustrative planning material, not a list of implemented features, pricing commitments or corporate policy approvals. Current executable behavior and these limitations take precedence.
 
 ## Distribution
 

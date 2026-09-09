@@ -187,7 +187,6 @@ Tests use a fresh temporary data directory and real C++ exports. They cover nume
 
 ## Reference documents
 
-The optional presentation and design files in `docs/` describe earlier deployment proposals, not the current runtime contract. [ARCHITECTURE.md](ARCHITECTURE.md) and this README describe the implemented release. Review historical presentation/document contents separately before redistributing them.
 
 ## Distribution
 
