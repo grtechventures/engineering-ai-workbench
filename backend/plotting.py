@@ -35,6 +35,9 @@ class PlottingMixin:
     def plot_authority(self,p):
         c=self.conversation_get(p['conversation_id']);a=self.agent_get(c['agent_id'])
         self.check_agent({'agent':p['agent']})
+        if p.get('skill_reference'):
+            skill=self.authored_check(p['skill_reference']['id'],a)
+            if skill['version']!=p['skill_reference']['version']:raise ValueError('Skill version changed')
         if a!=p['agent']:raise ValueError('Agent changed; create a fresh plot proposal')
         if 'python.reviewed_extension' not in a['tools']:raise ValueError('This agent cannot execute generated Python')
         if os.getenv('EWB_PLOT_IMAGE','')!=p['image']:raise ValueError('Worker image changed; create a fresh proposal')
@@ -72,6 +75,9 @@ class PlottingMixin:
                 if attempt:raise ValueError('The model did not produce valid Python after a drafting repair. No code was executed; revise the request and try again.') from exc
                 prompt+='\nRepair this invalid draft; return the complete corrected JSON. Error: '+str(exc)[:500]+'\nInvalid draft (reference only): '+raw[:16000]
         payload={**draft.model_dump(),'request':request,'data':data,'agent':a,'image':image}
+        if parent and parent.get('skill_reference'):
+            self.authored_check(parent['skill_reference']['id'],a)
+            payload['skill_reference']=parent['skill_reference']
         fid=fingerprint(payload);pid=uuid.uuid4().hex
         with self.lock:
             self.db.execute('INSERT INTO plots VALUES(?,?,?,?,?,?,?,?,?)',(pid,cid,job_id,parent_id,time.time(),'code_review',json.dumps(payload),fid,None));self.db.commit()
@@ -79,7 +85,7 @@ class PlottingMixin:
     def plot_action(self,pid,action,token,background=True):
         with self.lock:
             p=self.plot_get(pid)
-            if token!=p['fingerprint'] or fingerprint({k:p[k] for k in ['title','summary','code','request','data','agent','image']})!=token:raise ValueError('Plot approval is stale')
+            if token!=p['fingerprint'] or fingerprint({k:p[k] for k in ['title','summary','code','request','data','agent','image']+(['skill_reference'] if p.get('skill_reference') else [])})!=token:raise ValueError('Plot approval is stale')
             if action=='reject':
                 if p['status']!='code_review':raise ValueError('Plot is not awaiting code review')
                 self.db.execute("UPDATE plots SET status='rejected' WHERE id=?",(pid,));self.db.commit()

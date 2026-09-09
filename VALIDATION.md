@@ -2,7 +2,7 @@
 
 ## Automated validation
 
-92 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+99 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 
@@ -56,3 +56,7 @@ Request changes opens an inline revision prompt and retains report review. Conve
 The runtime task flow replaces the earlier hardcoded axis-line shortcut. Tests cover draft-only behavior, syntax rejection, input retention across revisions, stale approvals, permission revocation, cross-conversation denial, execution failure, duplicate execution prevention, and user-supplied calculations without a preceding result. Tool registrations do not read their referenced paths.
 
 A local Qwen2.5-Coder 7B generated a statistics-and-plot script against synthetic data. After script inspection, browser approval executed it in the pinned Docker image and displayed JSON and PNG outputs. A follow-up generated a separate script revision with dotted mean lines, which also ran in Docker. Both versions matched independent mean and population-standard-deviation calculations to 1e-12. The model initially produced invalid syntax and later imprecise unit labels; syntax checks and human output review remain necessary. This is a focused integration test, not broad qualification of generated scientific code. Windows runtime validation remains pending.
+
+## Skill authoring validation
+
+Tests cover direct creation without jobs, invalid code and unknown tools, atomic package validation, multiple registrations, release/assignment/package checks, and retirement blocking already-prepared execution. Browser checks saved a standalone skill and a package draft. Preparing a skill uses the already-tested reviewed Python runtime; import and release never execute reference code.

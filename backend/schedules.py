@@ -74,6 +74,7 @@ class SchedulesMixin:
         row=self.db.execute('SELECT * FROM skills WHERE id=?',(config['skill_id'],)).fetchone()
         if not row or row['status']!='released' or row['id'] not in a['skill_ids']:
             raise ValueError('Select a released skill assigned to this agent')
+        if self.db.execute('SELECT id FROM authored_skills WHERE id=?',(row['id'],)).fetchone():raise ValueError('Authored Python skills require interactive review and cannot be scheduled')
         if row['job_id'] and self.get(row['job_id'])['extension']:
             raise ValueError('Scheduling currently supports released comparisons without generated Python')
         plan={'workflow':'compare','skill_id':row['id'],'skill_version':row['version'],'skill_name':row['name']}

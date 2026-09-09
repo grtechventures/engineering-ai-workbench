@@ -125,6 +125,7 @@ class AgentsMixin:
                 if sid not in a['skill_ids'] or not row or row['status']!='released':
                     if choice.skill_id:raise ValueError('Model selected an unassigned or unreleased skill')
                     continue
+                if self.db.execute('SELECT id FROM authored_skills WHERE id=?',(sid,)).fetchone():continue
                 extension=bool(self.get(row['job_id'])['extension']) if row['job_id'] else False
                 if extension!=(choice.workflow=='extension'):
                     if choice.skill_id:raise ValueError('Selected skill is incompatible with the proposed method')

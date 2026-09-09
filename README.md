@@ -205,3 +205,7 @@ See [SCHEDULING.md](SCHEDULING.md) for timing, approval and recovery semantics.
 ## Runtime Python and tool registration
 
 Generate reviewed Python tasks for calculations, tables and plots, then revise their scripts in the conversation. Each version runs only after approval in a pinned local Docker image. See [Dynamic Python tasks](PLOTTING.md) for setup, artifact review and scope limits. The Tools page records application and optional source-folder references for future reviewed adapter integration; registration does not enable execution or source access.
+
+## Create or import skills and packages
+
+Skills library supports direct drafts and Markdown/JSON import without an accepted analysis. Plugins supports declarative multi-skill packages. See [Skill authoring](SKILL_AUTHORING.md) for formats, release and agent assignment, and current limitations. Multiple tool registrations are supported.

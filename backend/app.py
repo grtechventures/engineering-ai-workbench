@@ -177,6 +177,7 @@ def skill_decision(sid:str,body:Decision):
 def skill_run(sid:str):
     with engine.lock:row=engine.db.execute('SELECT * FROM skills WHERE id=?',(sid,)).fetchone()
     if not row or row['status']!='released':raise ValueError('Only released skills can run')
+    if engine.db.execute('SELECT id FROM authored_skills WHERE id=?',(sid,)).fetchone():raise ValueError('Prepare authored skills using an assigned agent')
     extension=bool(engine.get(row['job_id'])['extension']) if row['job_id'] else False
     # This prototype reuses the recipe. Extension scripts still require fresh review.
     return {'id':engine.create('Run skill: '+row['name'],extension)}
@@ -216,3 +217,21 @@ from .tool_registry import ToolRegistration
 def registered_tools():return {'registered':engine.tool_registrations(),'released':engine.catalog()['plugin']}
 @app.post('/api/tools')
 def register_tool(body:ToolRegistration):return engine.tool_register(body.model_dump())
+
+from .authored_skills import SkillDraft,PackageDraft
+class PrepareSkill(Payload):
+    agent_id:str
+    job_id:str|None=None
+class PackageAction(Payload):action:Literal['enable','disable']
+@app.get('/api/authored-skills')
+def authored_skills():return engine.authored_list()
+@app.post('/api/authored-skills')
+def create_authored_skill(body:SkillDraft):return engine.authored_create(body.model_dump())
+@app.post('/api/authored-skills/{sid}/prepare')
+def prepare_authored_skill(sid:str,body:PrepareSkill):return engine.authored_prepare(sid,body.agent_id,body.job_id)
+@app.get('/api/skill-packages')
+def packages():return engine.packages_list()
+@app.post('/api/skill-packages')
+def create_package(body:PackageDraft):return engine.package_create(body.model_dump())
+@app.post('/api/skill-packages/{pid}/action')
+def package_action(pid:str,body:PackageAction):return engine.package_action(pid,body.action)
