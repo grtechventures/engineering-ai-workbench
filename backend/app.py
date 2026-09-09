@@ -1,0 +1,174 @@
+import json, os, secrets, time, uuid
+from pathlib import Path
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal
+from .engine import Engine, ROOT, digest
+from .models import PUBLIC_PROMPTS
+from .worker import worker_status
+from .agents import AgentConfig
+
+TOKEN=secrets.token_urlsafe(32)
+engine=Engine()
+app=FastAPI(title='Engineering AI Workbench',docs_url=None,redoc_url=None,openapi_url=None)
+class Payload(BaseModel):model_config=ConfigDict(extra='forbid')
+class JobRequest(Payload):
+    request:str=Field(min_length=1,max_length=2000)
+    workflow:Literal['compare','extension']='compare'
+class Action(Payload):
+    action:Literal['approve','reject','resume','cancel']
+    fingerprint:str=''
+class Promote(Payload):
+    job_id:str
+    name:str=Field(min_length=1,max_length=80)
+class Memory(Payload):
+    text:str=Field(min_length=1,max_length=500)
+    scope:Literal['personal','project']='project'
+class Decision(Payload):action:Literal['approve','retire']
+class PluginSwitch(Payload):enabled:bool
+class Reason(Payload):topic:Literal['rmse','validation','sampling']
+class AgentEdit(Payload):
+    config:AgentConfig
+    revision:int|None=None
+class AgentTask(Payload):request:str=Field(min_length=1,max_length=2000)
+class ConversationStart(Payload):agent_id:str
+
+@app.middleware('http')
+async def local_boundary(request:Request,call_next):
+    host=request.headers.get('host','')
+    if host.split(':')[0] not in ('127.0.0.1','localhost','testserver'):
+        return JSONResponse({'detail':'Local prototype only'},status_code=403)
+    origin=request.headers.get('origin')
+    if origin and origin!=str(request.base_url).rstrip('/'):
+        return JSONResponse({'detail':'Cross-origin request blocked'},status_code=403)
+    if request.method not in ('GET','HEAD'):
+        if request.headers.get('x-workbench-token')!=TOKEN:
+            return JSONResponse({'detail':'Reload the workbench to authorize this local request'},status_code=403)
+        if int(request.headers.get('content-length','0'))>20000:
+            return JSONResponse({'detail':'Request is too large'},status_code=413)
+    response=await call_next(request)
+    response.headers['Cache-Control']='no-store'
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    return response
+
+@app.exception_handler(ValueError)
+async def bad_request(request,exc):return JSONResponse({'detail':str(exc)},status_code=409)
+@app.exception_handler(KeyError)
+async def not_found(request,exc):return JSONResponse({'detail':'Item not found'},status_code=404)
+
+@app.get('/api/bootstrap')
+def bootstrap():
+    with engine.lock:
+        jobs=[{k:x[k] for k in ['id','request','status','created','updated','error','extension']} for x in engine.db.execute('SELECT * FROM jobs ORDER BY created DESC')]
+    return {'token':TOKEN,'jobs':jobs,'catalog':engine.catalog(),'models':engine.gateway.info(),'worker':worker_status(),
+            'project':{'name':'Response validation','classification':'Synthetic data','runs':['Run A · baseline','Run B · revision']},
+            'identity':'Local demo reviewer','version':'0.2.0','agents':engine.list_agents(),'conversations':engine.conversation_list()}
+
+@app.post('/api/conversations')
+def new_conversation(body:ConversationStart):return engine.conversation_create(body.agent_id)
+@app.get('/api/conversations/{cid}')
+def get_conversation(cid:str):return engine.conversation_get(cid)
+@app.post('/api/conversations/{cid}/messages')
+def message(cid:str,body:AgentTask):return engine.conversation_send(cid,body.request)
+
+@app.post('/api/agents')
+def create_agent(body:AgentEdit):return engine.agent_save(body.config.model_dump())
+@app.post('/api/agents/{aid}')
+def update_agent(aid:str,body:AgentEdit):return engine.agent_save(body.config.model_dump(),aid,body.revision)
+@app.post('/api/agents/{aid}/enabled')
+def enable_agent(aid:str,body:PluginSwitch):return engine.agent_switch(aid,body.enabled)
+@app.post('/api/agents/{aid}/run')
+def run_agent(aid:str,body:AgentTask):return {'id':engine.create(body.request,agent=engine.agent_get(aid))}
+@app.post('/api/jobs/{j}/clarify')
+def clarify_job(j:str,body:AgentTask):
+    item=engine.get(j)
+    if item['status']!='needs_input' or not item.get('agent'):raise ValueError('This job is not awaiting clarification')
+    # A new job preserves the original request and its decision record.
+    child=engine.create(body.request,agent=item['agent'])
+    engine.event(child,'clarification','Revised task from an earlier clarification request')
+    engine.event(j,'clarification','A revised task was submitted as a new job')
+    return {'id':child}
+@app.post('/api/jobs')
+def new_job(body:JobRequest):
+    return {'id':engine.create(body.request,body.workflow=='extension')}
+@app.get('/api/jobs/{j}')
+def job(j:str):return engine.get(j)
+@app.post('/api/jobs/{j}/action')
+def action(j:str,body:Action):engine.act(j,body.action,body.fingerprint);return {'ok':True}
+@app.post('/api/jobs/{j}/explain')
+def explain(j:str):
+    item=engine.get(j)
+    if not item['result']:raise ValueError('A numerical result is required')
+    try: text=engine.gateway.complete('local','Explain these computed comparison metrics without inventing limits. State that the data is synthetic.',engineering_context=item['result']['metrics'])
+    except Exception as e:raise ValueError('Local model request failed or is not configured. Check the server configuration.') from e
+    engine.event(j,'local_model','Local model produced a draft explanation; numerical results were unchanged')
+    return {'text':text,'label':'Local model draft — review required'}
+@app.get('/api/jobs/{j}/report')
+def report(j:str):
+    item=engine.get(j)
+    if not item['result']:raise ValueError('No report available')
+    payload={'title':'Synthetic run comparison','status':item['status'],'request':item['request'],
+             'result':item['result'],'narrative':item['narrative'],'inputs':item['inputs'],'events':item['events'],
+             'agent':item.get('agent'),'plan':item.get('plan'),
+             'notice':'Prototype evidence. Synthetic data. Local demo identity is not enterprise authentication.'}
+    return Response(json.dumps(payload,indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="comparison-evidence.json"'})
+@app.post('/api/skills')
+def promote(body:Promote):
+    item=engine.get(body.job_id)
+    if item['status']!='accepted':raise ValueError('Accept the engineering report before proposing a reusable skill')
+    sid=uuid.uuid4().hex
+    with engine.lock:
+        engine.db.execute('INSERT INTO skills VALUES(?,?,?,?,?,?)',(sid,body.name,'Reusable comparison workflow proposed from an accepted job. Each run uses the current authorized inputs.','candidate','0.1.0',body.job_id));engine.db.commit()
+    engine.event(body.job_id,'skill','Proposed a reusable skill for a separate release review');return {'id':sid}
+@app.post('/api/skills/{sid}/decision')
+def skill_decision(sid:str,body:Decision):
+    if sid=='compare-runs':raise ValueError('The bundled baseline is managed through the plugin')
+    with engine.lock:
+        row=engine.db.execute('SELECT * FROM skills WHERE id=?',(sid,)).fetchone()
+        if not row:raise KeyError(sid)
+        if body.action=='approve' and row['status']!='candidate':raise ValueError('Only a candidate can be released')
+        engine.db.execute('UPDATE skills SET status=? WHERE id=?',('released' if body.action=='approve' else 'retired',sid));engine.db.commit()
+    return {'ok':True}
+@app.post('/api/skills/{sid}/run')
+def skill_run(sid:str):
+    with engine.lock:row=engine.db.execute('SELECT * FROM skills WHERE id=?',(sid,)).fetchone()
+    if not row or row['status']!='released':raise ValueError('Only released skills can run')
+    extension=bool(engine.get(row['job_id'])['extension']) if row['job_id'] else False
+    # This prototype reuses the recipe. Extension scripts still require fresh review.
+    return {'id':engine.create('Run skill: '+row['name'],extension)}
+@app.post('/api/knowledge')
+def memory(body:Memory):
+    mid=uuid.uuid4().hex
+    with engine.lock:
+        engine.db.execute('INSERT INTO knowledge VALUES(?,?,?,?,?)',(mid,body.text,'proposed',body.scope,None));engine.db.commit()
+    return {'id':mid}
+@app.post('/api/knowledge/{mid}/decision')
+def memory_decision(mid:str,body:Decision):
+    with engine.lock:
+        row=engine.db.execute('SELECT * FROM knowledge WHERE id=?',(mid,)).fetchone()
+        if not row:raise KeyError(mid)
+        engine.db.execute('UPDATE knowledge SET status=? WHERE id=?',('approved' if body.action=='approve' else 'retired',mid));engine.db.commit()
+    return {'ok':True}
+@app.post('/api/plugin')
+def plugin(body:PluginSwitch):
+    with engine.lock:
+        engine.db.execute("UPDATE settings SET value=? WHERE key='plugin'",('enabled' if body.enabled else 'disabled',));engine.db.commit()
+    return {'ok':True}
+@app.post('/api/general-reasoning')
+def general(body:Reason):
+    # No free-form prompt, attachments, job IDs, conversation or project data are accepted.
+    prompt=PUBLIC_PROMPTS[body.topic]
+    try:answer=engine.gateway.complete('frontier',prompt)
+    except Exception as e:raise ValueError('Frontier endpoint is unavailable or not configured. No engineering context was included.') from e
+    return {'text':answer,'sent_prompt':prompt,'scope':'Public, curated general reasoning'}
+@app.get('/api/source')
+def source():
+    return {'files':[{'name':'C++ binary gateway','path':'legacy/engineering_demo.cpp','content':(ROOT/'legacy/engineering_demo.cpp').read_text()},
+                     {'name':'Released comparison routine','path':'backend/analysis.py','content':(ROOT/'backend/analysis.py').read_text().split('DRAFT =')[0]}],
+            'notice':'Curated, read-only source discovery. Source visibility does not grant execution authority.'}
+@app.get('/')
+def index():return FileResponse(ROOT/'frontend/index.html')
+app.mount('/static',StaticFiles(directory=ROOT/'frontend'),name='static')

@@ -1,0 +1,9 @@
+{
+  "id": "run-comparison", "name": "Run Comparison", "version": "1.0.0",
+  "owner": "Prototype engineering team", "status": "approved",
+  "description": "Export two synthetic binary runs, compare response curves, and review the evidence.",
+  "permissions": ["demo-project:read", "job-output:write"],
+  "tools": ["legacy.export_series", "analysis.compare_runs"],
+  "skills": ["compare-runs"], "views": ["series-comparison"],
+  "compatibility": "workbench/0.1", "signature": "development-only; not enterprise signed"
+}
