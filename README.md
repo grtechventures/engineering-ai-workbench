@@ -1,23 +1,46 @@
 # Engineering AI Workbench — functional prototype
 
-**Version 0.2 adds saved agents and persistent conversations.** Start with a natural-language message, review the proposed plan, then discuss the results in the same conversation. Local model and Docker settings are saved on this Mac; the portable archive excludes those machine settings and runtime data. See [DEMO_GUIDE.md](DEMO_GUIDE.md) for the demonstration walkthrough.
+**Version 0.2 adds saved agents and persistent conversations.** Start with a natural-language message, review the proposed plan, then discuss the results in the same conversation. The demonstration targets Windows 11. Configure the local model and Docker worker on the demo machine; machine settings and runtime data are excluded from the repository and portable archive. See [DEMO_GUIDE.md](DEMO_GUIDE.md) for the demonstration walkthrough.
 
 A local browser workspace backed by **real LangGraph workflows, SQLite checkpoints, a compiled C++ application, and numerical Python analysis**. This demonstrates the architecture using synthetic engineering data. It is a single-user development prototype, not a production department deployment.
 
-## Start here
+## Start here — Windows 11
 
-On this Mac, open `start.command` (or run `bash start.command` from this directory), then open **http://127.0.0.1:8765**. If the existing server is already running, simply open that address. Do not start a second server on the same port. Stop a terminal-launched server with **Ctrl+C**.
+The demo runs as a local browser application on a **Windows 11 machine**. Install Python 3.12 and a C++17 toolchain (Visual Studio Build Tools with the C++ workload and Windows SDK). Use **Developer PowerShell for Visual Studio** so the Microsoft `cl` compiler is available.
 
-The launcher reuses the tested environment from this task when available. On another Mac/Linux machine it creates `.venv` and installs the pinned dependencies. Python 3.11+ and a C++17 compiler are required. On Windows, use Python 3.12 and a Visual Studio Developer PowerShell, then run `./start.ps1`. Windows support is provided in source and launcher form; this prototype was tested on macOS only.
+For the conversational and generated-Python demonstration, also install [Ollama for Windows](https://docs.ollama.com/windows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/). Run Docker in **Linux-container mode**, for example with its WSL 2 backend. The C++ gateway runs natively on Windows; the approved Python extension runs inside a Linux container.
 
-Manual setup from this directory:
+Clone or download this repository, open Developer PowerShell in its root directory, start Ollama and Docker Desktop, then run:
 
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python scripts/setup.py
-.venv/bin/python -m uvicorn backend.app:app --host 127.0.0.1 --port 8765
+```powershell
+# Download the demo model and Python worker image once.
+ollama pull qwen2.5-coder:7b
+docker pull python:3.12-slim
+
+# Configure this PowerShell session before starting the Workbench.
+$env:EWB_LOCAL_MODEL_URL = 'http://127.0.0.1:11434/v1'
+$env:EWB_LOCAL_MODEL = 'qwen2.5-coder:7b'
+$env:EWB_WORKER_IMAGE = (docker image inspect --format '{{.Id}}' python:3.12-slim).Trim()
+
+./start.ps1
 ```
+
+Open **http://127.0.0.1:8765** in the Windows browser and keep the PowerShell window open. The launcher creates `.venv`, installs dependencies, compiles the dummy C++ application, creates synthetic inputs and starts the service. If the server is already running, use that instance rather than starting a second server on the same port. Stop it with **Ctrl+C**.
+
+The environment variables above last for the current PowerShell session. Set them again in a new session, or save the non-secret model and image settings using the files described below. On a fresh checkout, create an agent in **Agents**; agents and conversations from the development machine are not included.
+
+**Windows validation remains to be completed on the demo machine.** The existing automated and live integration checks were performed on macOS; the presence of a Windows launcher does not imply those checks have passed on Windows. Run the validation command below and rehearse both the comparison and Docker extension before presenting.
+
+Manual Windows setup, if you need to run the launcher steps individually:
+
+```powershell
+py -3.12 -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
+./.venv/Scripts/python.exe scripts/setup.py
+./.venv/Scripts/python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8765
+```
+
+For optional macOS/Linux development, `bash start.command` remains available with Python 3.11+ and a C++17 compiler. Windows 11 is the demonstration platform.
 
 The C++ build script seeds `data/run-a.ewb` and `data/run-b.ewb` only if either file is missing. The `.ewb` format is a deliberately simple, native-endian binary fixture owned by the C++ application. It is neither an existing proprietary format nor a cross-platform archival standard. Regenerate fixture files on a different architecture.
 
@@ -53,18 +76,18 @@ The conversation can discuss and refine requests, but execution currently suppor
 | Scheduling | Persistent individual jobs | Recurring schedules and a managed departmental runner |
 | Data sources | Synthetic C++ binary application | SQLite/SQL Server enterprise adapters and file authorization |
 
-The application never automatically installs model weights or Docker. They are configured separately. This session includes local model qualification and real Docker integration checks; see VALIDATION.md for results. A frontier provider is not configured or tested live.
+The application never automatically installs model weights or Docker. They are configured separately. The initial development validation includes local model and real Docker integration checks; see VALIDATION.md for the platform and results. A frontier provider is not configured or tested live.
 
 ## Connect a local or approved on-premises model
 
 Set environment variables **before starting the server**. `.env.example` is a reference, not an automatically loaded secrets file. The base URL must expose OpenAI-compatible `POST /chat/completions` and normally ends in `/v1`.
 
-```sh
-export EWB_LOCAL_MODEL_URL=http://127.0.0.1:11434/v1
-export EWB_LOCAL_MODEL=qwen2.5-coder:7b
+```powershell
+$env:EWB_LOCAL_MODEL_URL = 'http://127.0.0.1:11434/v1'
+$env:EWB_LOCAL_MODEL = 'qwen2.5-coder:7b'
 # Optional when your approved server requires authentication:
-# export EWB_LOCAL_API_KEY=...
-bash start.command
+# $env:EWB_LOCAL_API_KEY = '...'
+./start.ps1
 ```
 
 A non-loopback engineering endpoint also requires `EWB_APPROVED_ONPREM=1`. That is an administrator assertion, not an automatic proof of corporate approval; configure only a host within your permitted data boundary. The prototype does not implement network-based verification of an approved on-premises server.
@@ -79,10 +102,10 @@ A configured but unreachable model results in a visible error; it never silently
 
 ## Connect a frontier or enterprise cloud model
 
-```sh
-export EWB_FRONTIER_URL=https://your-approved-provider.example/v1
-export EWB_FRONTIER_MODEL=your-approved-model
-export EWB_FRONTIER_API_KEY=...
+```powershell
+$env:EWB_FRONTIER_URL = 'https://your-approved-provider.example/v1'
+$env:EWB_FRONTIER_MODEL = 'your-approved-model'
+$env:EWB_FRONTIER_API_KEY = '...'
 ```
 
 Use **Model connections → Public topic**. Only a server-owned topic enum is accepted. The server creates a curated public prompt, with no free-form text, conversation, source, files, job ID, or measurements. The engineering graph never uses this route. Unknown request fields are rejected. OpenAI-compatible endpoints are supported; provider-specific APIs such as native Anthropic Messages or Azure-specific authentication need an additional adapter.
@@ -93,10 +116,11 @@ Credentials remain in the server environment. Requests disable proxy-environment
 
 Install an approved Docker distribution separately. Obtain a reviewed Python runtime image through your normal process. It needs Python 3 and only the standard library for this demo. Record its **local image ID**:
 
-```sh
-docker image inspect --format '{{.Id}}' YOUR_REVIEWED_IMAGE
-export EWB_WORKER_IMAGE=sha256:YOUR_LOCAL_IMAGE_ID
+```powershell
+$env:EWB_WORKER_IMAGE = (docker image inspect --format '{{.Id}}' YOUR_REVIEWED_IMAGE).Trim()
 ```
+
+For persistent non-secret worker configuration, create the `data` directory if needed and save the image ID in `data/worker-image.txt` (plain UTF-8 text). The Windows launcher reads it when the environment variable is unset. Obtain the image ID on the target Windows machine; do not copy a development machine's image ID.
 
 Restart the server, then create a **new** extension job so approval includes that image. A job approved against another image must not be reused; create a fresh request. The runner does not pull images during execution.
 
@@ -128,8 +152,8 @@ One process and one worker are supported. Do not run multiple web workers or exp
 
 ## Validation
 
-```sh
-.venv/bin/python -m pytest -q
+```powershell
+./.venv/Scripts/python.exe -m pytest -q
 ```
 
 Tests use a fresh temporary data directory and real C++ exports. They cover numerical reference values, corrupt input rejection, unit mismatches, stale/duplicate review, code rejection, worker-unavailable blocking, persisted review recovery, plugin enforcement, cancelled jobs, cloud context rejection, model-draft gating, and image-change invalidation. API tests additionally check same-origin protection and capability lifecycle behavior. Refer to `VALIDATION.md` for the verified run and limitations.
