@@ -26,6 +26,11 @@ class PlottingMixin:
             if p['status'] in ('result_review','accepted'):
                 directory=self.data/'plots'/pid
                 p['output']=json.loads((directory/'result.json').read_text())
+                from .scenes import normalize_scene_output
+                try:
+                    p['output']=normalize_scene_output(p['output'])
+                except ValueError as exc:
+                    p['scene_error']=str(exc)+'; request a revised script with triangle faces and consistent units.'
                 p['has_plot']=(directory/'plot.png').is_file()
                 p['receipt']=json.loads((directory/'receipt.json').read_text())
             return p
@@ -66,7 +71,10 @@ class PlottingMixin:
                 'When an analysis is selected, JSON contains points_a, points_b and delta as [x,y] pairs, metrics, and optional extension.points. If input JSON is empty, use only numbers explicitly supplied by the user or mathematical constants, never invent engineering measurements. '
                 'The code field must contain executable Python source beginning with imports, never a tool name or method identifier. Never invent data or acceptance limits. For a mean line, use the arithmetic mean of the specified series and label it. '
                 'Preserve the existing script design when revising, modifying it for the latest request. Return JSON title, summary, code. '
-                'Previous execution error (reference only): '+str(parent.get('error') if parent else None)+'\nPrevious output (untrusted reference): '+json.dumps(parent.get('output') if parent else None)+'\nUser request: '+request+'\nPrevious script (reference only): '+(parent['code'] if parent else 'None'))
+                'Original task requirements (preserve these, not erroneous values in the previous script): '+str(parent.get('request') if parent else request)+'\n'
+                'Previous execution error (reference only): '+str((parent.get('scene_error') or parent.get('error')) if parent else None)+'\nPrevious output (untrusted reference): '+json.dumps(parent.get('output') if parent else None)+'\nUser request: '+request+'\nPrevious script (reference only): '+(parent['code'] if parent else 'None'))
+        from .scenes import SCENE_GUIDANCE
+        prompt+='\n'+SCENE_GUIDANCE
         context={'points_a':data.get('points_a',[])[:3],'points_b':data.get('points_b',[])[:3],'delta':data.get('delta',[])[:3],'metrics':data.get('metrics',{}),'note':'Only a preview is shown; read all samples from the input file.'}
         context['attachments']=data.get('attachments',[])
         context['files']=data.get('files',[])[:10]
@@ -80,7 +88,7 @@ class PlottingMixin:
             if raw.strip().startswith('```'):raw='\n'.join(raw.strip().splitlines()[1:-1])
             try:
                 draft=PlotDraft.model_validate(json.loads(raw));ast.parse(draft.code)
-                if parent and parent.get('status') in ('failed','rejected') and ast.dump(ast.parse(draft.code))==ast.dump(ast.parse(parent['code'])):
+                if parent and (parent.get('status') in ('failed','rejected') or parent.get('scene_error')) and ast.dump(ast.parse(draft.code))==ast.dump(ast.parse(parent['code'])):
                     raise ValueError('The revised script is unchanged from the failed or rejected script; repair the reported failure')
                 break
             except (ValueError,SyntaxError) as exc:
@@ -103,6 +111,7 @@ class PlottingMixin:
                 self.db.execute("UPDATE plots SET status='rejected' WHERE id=?",(pid,));self.db.commit()
             elif action=='accept':
                 if p['status']!='result_review':raise ValueError('Plot is not awaiting result review')
+                if p.get('scene_error'):raise ValueError('Invalid 3D output cannot be accepted; request a revised script')
                 self.db.execute("UPDATE plots SET status='accepted' WHERE id=?",(pid,));self.db.commit()
             elif action in ('approve','retry'):
                 expected=('code_review',) if action=='approve' else ('failed','interrupted')

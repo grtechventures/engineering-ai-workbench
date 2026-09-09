@@ -79,6 +79,8 @@ async def local_boundary(request:Request,call_next):
     response.headers['Cache-Control']='no-store'
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    if request.url.path == "/static/viewer3d.html":
+        response.headers['Content-Security-Policy']=response.headers['Content-Security-Policy'].replace("frame-ancestors 'none'", "frame-ancestors 'self'")
     return response
 
 @app.exception_handler(ValueError)
@@ -297,3 +299,11 @@ def channel_save(body: ChannelConfig): return engine.channel_save(body.model_dum
 def channel_update(cid: str, body: ChannelConfig): return engine.channel_save(body.model_dump(), cid)
 @app.post('/api/channels/{cid}/preview')
 def channel_preview(cid: str, body: Payload): return engine.channel_preview(cid)
+
+@app.get('/api/python-tasks/{pid}/scene')
+def python_scene(pid: str):
+    from .scenes import validate_scene
+    p=engine.plot_get(pid)
+    if p['status'] not in ('result_review','accepted') or 'scene3d' not in p.get('output',{}):
+        raise ValueError('3D scene is not ready')
+    return validate_scene(p['output']['scene3d'])

@@ -50,6 +50,8 @@ def run_script(code, inputs, directory):
     if target.is_symlink() or not target.is_file() or target.stat().st_size>1024*1024:
         raise RuntimeError('Worker did not produce a valid bounded result artifact')
     payload=json.loads(target.read_text())
+    from .scenes import normalize_scene_output
+    payload = normalize_scene_output(payload)
     receipt={'runtime':'Docker','container_name':name,'image_id':image,'exit_code':result.returncode,
              'started_at':started,'finished_at':time.time(),'container_removed':True,
              'network':'none','user':'65534:65534','memory_mb':256,'timeout_seconds':30,
@@ -66,6 +68,7 @@ def run_plot_script(code, inputs, directory, image, mounts=None):
     root=Path(directory)/name;ins=root/'inputs';outs=root/'outputs'
     ins.mkdir(parents=True);outs.mkdir();outs.chmod(0o777)
     (ins/'script.py').write_text(code);(ins/'data.json').write_text(json.dumps(inputs))
+    (ins/'runner.py').write_text("import json, runpy\ntry:\n    runpy.run_path('/inputs/script.py', run_name='__main__')\nexcept Exception as exc:\n    detail = type(exc).__name__ + ': ' + str(exc)[:700]\n    with open('/outputs/execution-error.json', 'w') as f:\n        json.dump({'error': detail}, f)\n    raise SystemExit(1)\n")
     started=time.time()
     try:
         result=subprocess.run(command+['run','--rm','--pull=never','--name',name,'--network=none','--read-only',
@@ -73,9 +76,17 @@ def run_plot_script(code, inputs, directory, image, mounts=None):
             '--cpus=1','--memory=512m','--memory-swap=512m','--ulimit','fsize=4194304:4194304','--log-driver=none',
             '--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--env','MPLCONFIGDIR=/tmp/mpl','--env','MPLBACKEND=Agg',
             '--mount',f'type=bind,src={ins.resolve()},dst=/inputs,readonly',
-            '--mount',f'type=bind,src={outs.resolve()},dst=/outputs',*(mounts or []),image,'python','-I','/inputs/script.py'],
+            '--mount',f'type=bind,src={outs.resolve()},dst=/outputs',*(mounts or []),image,'python','-I','/inputs/runner.py'],
             stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60,env=env)
-        if result.returncode:raise RuntimeError('Python task failed in Docker. Revise the script or check its dependencies.')
+        if result.returncode:
+            detail='No Python diagnostic was produced; check Docker availability or worker startup.'
+            error_file=outs/'execution-error.json'
+            if not error_file.is_symlink() and error_file.is_file() and error_file.stat().st_size<=8192:
+                try:
+                    error=json.loads(error_file.read_text()).get('error')
+                    if isinstance(error,str):detail=''.join(c for c in error if c.isprintable())[:750]
+                except (ValueError,OSError,AttributeError):pass
+            raise RuntimeError('Python task failed in Docker. '+detail)
     except subprocess.TimeoutExpired:
         subprocess.run(command+['rm','-f',name],capture_output=True,timeout=10,env=env)
         raise RuntimeError('Python task exceeded its 60 second limit')
@@ -96,6 +107,8 @@ def run_plot_script(code, inputs, directory, image, mounts=None):
     if payload is None:
         if png is None:raise RuntimeError('Task produced neither result.json nor a valid plot.png')
         payload={'summary':'Plot-only output; no structured calculations were supplied by the script.','output_kind':'plot_only'}
+    from .scenes import normalize_scene_output
+    payload = normalize_scene_output(payload)
     receipt={'runtime':'Docker','image_id':image,'container_name':name,'exit_code':0,'network':'none','container_removed':True,
              'started_at':started,'finished_at':time.time(),'script_sha256':hashlib.sha256(code.encode()).hexdigest(),
              'result_sha256':hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else None,'plot_sha256':hashlib.sha256(png).hexdigest() if png else None}

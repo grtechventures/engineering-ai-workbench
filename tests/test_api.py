@@ -66,3 +66,9 @@ def test_channel_setup_and_preview_boundaries(client):
     assert c.post(f'/api/channels/{cid}/preview',json={}).json()['sent'] is False
     assert c.post(f'/api/channels/{cid}/preview',json={'send':True}).status_code==422
     assert c.post('/api/channels',json={'name':'Teams','enabled':True}).status_code==422
+
+def test_viewer_embedding_is_same_origin_only(client):
+    c,_=client
+    assert "frame-ancestors 'none'" in c.get('/').headers['Content-Security-Policy']
+    assert "frame-ancestors 'self'" in c.get('/static/viewer3d.html').headers['Content-Security-Policy']
+    assert c.get('/api/python-tasks/missing/scene').status_code==404

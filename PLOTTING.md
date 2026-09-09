@@ -34,3 +34,26 @@ Receipts retain image, script and output hashes and execution times in local tas
 ## Tools and source references
 
 The Tools page registers an application/module location and optional source-folder reference. These are metadata, not executable tools or file access grants. The bundled adapter remains the only released application integration. Source-folder indexing, executable adapter onboarding and arbitrary installed-application discovery are not implemented. Additional integrations must preserve the administrator-approved file and network boundaries.
+
+## Interactive 3D results
+
+Describe geometry, dimensions and units in a conversation using an agent with
+reviewed Python enabled. Python returns a `scene3d` field in `result.json`, after
+exact-script approval and isolated Docker execution. The analysis panel renders
+that scene interactively using locally bundled Three.js 0.180.0. Follow-up requests
+create new reviewed script versions. The **Tools** page contains an expandable
+sample; 3D is a result type, not a separate workflow or top-level navigation item.
+
+The bounded schema supports boxes, spheres, cylinders, polylines, and indexed
+triangle meshes. It rejects unknown fields, external assets, scripts, invalid
+indices and nonfinite coordinates. Limits: 100 objects, 5,000 total mesh/line
+vertices, 10,000 triangles, and the existing 1 MiB JSON output limit. Browser GPU
+support is required. Rotation, zoom, pan, reset and PNG export are available.
+Animation, CAD solids, manufacturing tolerances, external model import, and
+physics solvers are not provided. Engineering correctness remains subject to
+review; successful rendering is not physical validation. Model drafting can fail.
+
+The schema is defined in `backend/scenes.py`. Three.js and OrbitControls are
+vendored with the upstream MIT license and package integrity metadata in
+`frontend/vendor/three/`. OrbitControls' import is changed to a local module.
+No npm installation or CDN access is required at runtime.

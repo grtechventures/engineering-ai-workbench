@@ -18,3 +18,16 @@ def test_no_output_is_still_rejected(tmp_path,monkeypatch):
     monkeypatch.setattr('backend.worker.local_docker_command',lambda:(['docker'],{}))
     monkeypatch.setattr('backend.worker.subprocess.run',lambda *a,**kw:SimpleNamespace(returncode=0))
     with pytest.raises(RuntimeError,match='neither'):run_plot_script('pass',{},tmp_path,'sha256:test')
+
+
+def test_python_error_is_returned_for_revision(tmp_path,monkeypatch):
+    monkeypatch.setattr('backend.worker.local_docker_command',lambda:(['docker'],{}))
+    def run(cmd,**kw):
+        mount=next(x for x in cmd if x.startswith('type=bind,src=') and x.endswith('dst=/outputs'))
+        out=Path(mount.split('src=')[1].split(',dst=')[0])
+        (out/'execution-error.json').write_text('{"error":"NameError: missing_function is not defined"}')
+        assert cmd[-1]=='/inputs/runner.py'
+        return SimpleNamespace(returncode=1)
+    monkeypatch.setattr('backend.worker.subprocess.run',run)
+    with pytest.raises(RuntimeError,match='NameError: missing_function'):
+        run_plot_script('missing_function()',{},tmp_path,'sha256:test')

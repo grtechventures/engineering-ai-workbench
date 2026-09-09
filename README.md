@@ -2,6 +2,8 @@
 
 A local engineering analysis workspace with conversational agents, reviewed tools, persistent evidence, and reusable methods. The reference implementation uses synthetic data and a small C++ application to demonstrate integration with application-owned binary formats.
 
+**Prototype release — Apache 2.0.** Download, modify and redistribute under [LICENSE](LICENSE). This software is provided AS IS, without warranties, subject to the license terms. See [release limitations](RELEASE_NOTES.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+
 **Version 0.4** adds persistent once/daily/weekly scheduling of approved released comparisons, alongside reviewed knowledge, evidence storage, replay, and bounded studies. Engineers can use an installed copy or a source archive without a GitHub account. This is a single-user prototype; it is not a production shared service.
 
 - Ask questions and review a proposed analysis plan.
@@ -21,7 +23,8 @@ For the conversational and generated-Python demonstration, also install [Ollama 
 Clone or download this repository and provision Python dependencies using the manual setup below (or an approved offline wheel bundle). Open Developer PowerShell in its root directory, start Ollama and Docker Desktop, then run the following one-time provisioning commands only where downloads are permitted:
 
 ```powershell
-# Download the demo model and Python worker image once.
+# Download the demo model and basic comparison worker image once.
+# General Python/file/3D tasks require the additional image setup in PLOTTING.md.
 ollama pull qwen2.5-coder:7b
 docker pull python:3.12-slim
 
@@ -70,7 +73,7 @@ The C++ build script seeds `data/run-a.ewb` and `data/run-b.ewb` only if either 
 
 **Guided workflows** preserves the original explicit workflow picker. **Demo-mode agents** use deterministic routing and canned explanations; the interface labels them as having no model. **Local-mode agents** actually call the configured Ollama/OpenAI-compatible model for conversation, bounded planning and script proposals. There is no silent fallback to demo mode or cloud inference.
 
-The conversation can discuss and refine requests, but execution currently supports two methods only: comparing the fixed synthetic Run A/Run B and their centered five-sample moving-average difference. A separate reviewed parameter-study flow explores smoothing windows using released code. It cannot run arbitrary engineering analyses, accept new project files, install arbitrary tools or create unrestricted autonomous agents. Unsupported plans ask for clarification without executing tools.
+Released comparison recipes cover the synthetic runs and smoothing. Separately, local models can draft general Python calculations, tables, plots and 3D scenes from supported uploaded files or user-supplied data. Generated scripts require approval and can fail or produce incorrect results. Unsupported adapters and unrestricted host execution are not provided.
 
 ## Implemented versus integration work
 
@@ -116,7 +119,7 @@ With a local-mode agent, each conversation request includes up to eight recent m
 
 With a local model configured, the moving-average workflow obtains a draft script from it, validates its JSON envelope and Python syntax, then pauses for human approval. Syntax validation does not prove correctness or safety. The exact code is displayed, fingerprinted with the input snapshots and worker image, and independently checked against the supported moving-average method after execution. For a completed comparison, **Draft local-model explanation** calls the local endpoint with computed metrics only. The returned prose does not alter the numerical result or acceptance record.
 
-A configured but unreachable model results in a visible error; it never silently switches an engineering request to a cloud model. Generation is currently restricted to the supported extension, not arbitrary new engineering methods.
+A configured but unreachable model results in a visible error; it never silently switches an engineering request to a cloud model. General Python drafting is available through the separate task flow; it is experimental and does not qualify new engineering methods.
 
 ## Offline security policy
 
@@ -190,7 +193,7 @@ The optional presentation and design files in `docs/` describe earlier deploymen
 
 GitHub is a source distribution option, not an application dependency. A maintainer can supply a ZIP through an approved internal software channel. The runtime never pushes conversations, knowledge, databases, or reports to a repository. Keep generated data and local credentials outside distributed packages.
 
-Repository visibility and team access are managed separately from the application. No public release or open-source license is introduced by this update; select licensing terms before advertising reuse rights for an eventual public release.
+Repository visibility and team access are separate from application permissions. Project code is licensed under Apache 2.0; third-party software and services retain their own terms.
 
 ## Schedule a released workflow
 
@@ -228,7 +231,7 @@ Questions receive bounded previews of the first ten files. Reviewed Python tasks
 
 Clear attachments detaches files from subsequent tasks. Existing task snapshots retain their files. Detached and unfinished files continue consuming storage; automatic garbage collection and resumable browser uploads are not implemented. Administrators should manage storage with the service stopped and preserve files referenced by evidence. Earlier small inline attachments remain readable for compatibility.
 
-Validation: 110 automated checks pass, and an actual Docker task streamed a 201 MiB upload and verified all 210,763,776 bytes. This validates disk-backed upload assembly and mounted execution; browser large-file upload QA and Windows runtime validation remain outstanding.
+Historical large-file validation: and an actual Docker task streamed a 201 MiB upload and verified all 210,763,776 bytes. This validates disk-backed upload assembly and mounted execution; browser large-file upload QA and Windows runtime validation remain outstanding.
 
 ### Excel calculations
 
@@ -258,3 +261,7 @@ intent, not permissions. Do not enter credentials or webhook URLs. A future live
 adapter requires administrator-approved network access, protected credentials,
 verified identity mapping, authorization, and data-release controls. Script and
 result approval remains in the Workbench.
+
+## 3D results
+
+Three.js is bundled locally. Approved Python can produce bounded scene geometry, displayed with rotation, zoom and PNG export beside the conversation. The sample is under Tools. This is static visualization, not CAD or physics simulation. Generated geometry and unit conversions remain model-dependent; the pipe-generation example is a known unreliable case. See [release limitations](RELEASE_NOTES.md).

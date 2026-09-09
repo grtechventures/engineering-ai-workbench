@@ -46,7 +46,7 @@ class ConversationsMixin:
         last_job=next((m['job_id'] for m in reversed(convo['messages']) if m['job_id']),None)
         job=self.get(last_job) if last_job else None
         # Route explicit runtime work and selected artifact revisions to reviewed Python.
-        wants_python=dynamic or parent_id or bool(re.search(r'\b(plot|chart|axis|axes|xy|histogram|regression|integral|standard deviation)\b',text,re.I))
+        wants_python=dynamic or parent_id or bool(re.search(r'\b(3d|three-dimensional|mesh|sketch|plot|chart|axis|axes|xy|histogram|regression|integral|standard deviation)\b',text,re.I))
         if (convo.get('files') or convo.get('attachments')) and re.search(r'\b(total|sum|calculate|work out|average|count|sales|tax|data quality)\b',text,re.I):
             wants_python=True
         if wants_python:

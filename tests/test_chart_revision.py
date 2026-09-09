@@ -81,3 +81,19 @@ def test_task_without_existing_result_can_use_user_supplied_numbers(runtime):
     e,c,j=runtime;fresh=e.conversation_create(c['agent_id'])
     p=e.plot_propose(fresh['id'],'Calculate mean of 2, 4 and 6')
     assert p['job_id'] is None and p['data']=={} and p['status']=='code_review'
+
+
+def test_legacy_bad_scene_blocks_accept_and_informs_revision(runtime,monkeypatch):
+    e,c,j=runtime;p=e.plot_propose(c['id'],'Create a 3D shape',j)
+    scene={'version':1,'title':'Bad mesh','units':'m','objects':[{'type':'mesh','vertices':[[0,0,0],[1,0,0],[1,1,0],[0,1,0]],'faces':[[0,1,2,3]]}]}
+    monkeypatch.setattr('backend.plotting.run_plot_script',lambda *a,**k:(None,scene,{}))
+    out=e.plot_action(p['id'],'approve',p['fingerprint'],False)
+    assert out['scene_error']
+    with pytest.raises(ValueError,match='cannot be accepted'):e.plot_action(p['id'],'accept',p['fingerprint'])
+    prompts=[]
+    def revised(*a,**k):
+        prompts.append(a[1]);return json.dumps({'title':'Revised mesh','summary':'Revised','code':'import json\nx=1'})
+    monkeypatch.setattr(e.gateway,'complete',revised)
+    q=e.plot_propose(c['id'],'Fix this',parent_id=p['id'])
+    assert q['status']=='code_review' and q['parent_id']==p['id']
+    assert 'Invalid 3D scene' in prompts[0]
