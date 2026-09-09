@@ -2,7 +2,7 @@
 
 ## Automated validation
 
-90 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+92 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 

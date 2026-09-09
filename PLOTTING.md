@@ -25,7 +25,7 @@ A failed or interrupted execution can be explicitly retried with the same approv
 
 ## Runtime contract and limits
 
-Generated Python reads `/inputs/data.json` and writes `/outputs/result.json` (a finite JSON object, up to 1 MB). A plot is optional at `/outputs/plot.png`, at most 4 MB and 2000 by 1600 pixels. Tables can be arrays of objects in the JSON output. Only these outputs are displayed; HTML, arbitrary scripts, SVG and file links are not executed in the browser.
+Generated Python reads `/inputs/data.json` and writes `/outputs/result.json` (a finite JSON object, up to 1 MB). Plot-only scripts may omit result.json; the Workbench then labels the output as plot-only without inventing numerical results. A plot is optional at `/outputs/plot.png`, at most 4 MB and 2000 by 1600 pixels. Tables can be arrays of objects in the JSON output. Only these outputs are displayed; HTML, arbitrary scripts, SVG and file links are not executed in the browser.
 
 Docker runs a pinned local image, no network, non-root, read-only root filesystem and inputs, dropped capabilities, 512 MB memory, one CPU, process limits, and a 60-second timeout. It receives no Docker socket or application credentials. The writable output directory belongs to this task. Additional disk quotas and stronger sandbox isolation remain production deployment work. Input/output checks do not establish numerical correctness or guarantee protection against vulnerabilities in the container runtime or image libraries.
 

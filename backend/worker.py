@@ -80,9 +80,11 @@ def run_plot_script(code, inputs, directory, image):
         subprocess.run(command+['rm','-f',name],capture_output=True,timeout=10,env=env)
         raise RuntimeError('Python task exceeded its 60 second limit')
     target=outs/'result.json'
-    if target.is_symlink() or not target.is_file() or target.stat().st_size>1024*1024:raise RuntimeError('Task must write a bounded result.json')
-    payload=json.loads(target.read_text(),parse_constant=lambda x: (_ for _ in ()).throw(ValueError('Nonfinite JSON output')))
-    if not isinstance(payload,dict):raise RuntimeError('Task result must be a JSON object')
+    payload=None
+    if target.exists() or target.is_symlink():
+        if target.is_symlink() or not target.is_file() or target.stat().st_size>1024*1024:raise RuntimeError('Task result.json is invalid or too large')
+        payload=json.loads(target.read_text(),parse_constant=lambda x: (_ for _ in ()).throw(ValueError('Nonfinite JSON output')))
+        if not isinstance(payload,dict):raise RuntimeError('Task result must be a JSON object')
     png=None;picture=outs/'plot.png'
     if picture.exists() or picture.is_symlink():
         if picture.is_symlink() or not picture.is_file() or picture.stat().st_size>4*1024*1024:raise RuntimeError('Invalid PNG artifact')
@@ -91,7 +93,10 @@ def run_plot_script(code, inputs, directory, image):
         import struct
         w,h=struct.unpack('>II',png[16:24])
         if not 0<w<=2000 or not 0<h<=1600:raise RuntimeError('PNG dimensions exceed display limits')
+    if payload is None:
+        if png is None:raise RuntimeError('Task produced neither result.json nor a valid plot.png')
+        payload={'summary':'Plot-only output; no structured calculations were supplied by the script.','output_kind':'plot_only'}
     receipt={'runtime':'Docker','image_id':image,'container_name':name,'exit_code':0,'network':'none','container_removed':True,
              'started_at':started,'finished_at':time.time(),'script_sha256':hashlib.sha256(code.encode()).hexdigest(),
-             'result_sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'plot_sha256':hashlib.sha256(png).hexdigest() if png else None}
+             'result_sha256':hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else None,'plot_sha256':hashlib.sha256(png).hexdigest() if png else None}
     return png,payload,receipt
