@@ -34,3 +34,9 @@ Accept a report and choose **Propose reusable skill**. Review the candidate sepa
 ## Deployment notes
 
 The reference workspace has one local reviewer and synthetic inputs. Windows runtime verification is pending; consult [VALIDATION.md](VALIDATION.md). Do not present this as a multi-user production deployment. Installations do not require a GitHub account; source archives can be distributed through approved internal channels.
+
+## Scheduled workflow
+
+From an accepted released comparison, open **Evidence → Schedule this workflow**. Select an agent with the released comparison skill assigned. Choose Once, UTC, and a future time several minutes ahead. Save the proposal, inspect its recipe and limits, and approve it. Keep the service running.
+
+Open **Schedules**. After the occurrence, expand Run history and open the result. The approved comparison executes without a second plan prompt, but the result awaits acceptance. Daily/weekly schedules skip the next occurrence if a prior result is still awaiting review. Pause, resume and cancel controls are available for recurring schedules.

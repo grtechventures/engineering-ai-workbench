@@ -9,10 +9,18 @@ from .engine import Engine, ROOT, digest
 from .models import PUBLIC_PROMPTS
 from .worker import worker_status
 from .agents import AgentConfig
+from .schedules import ScheduleConfig
+from contextlib import asynccontextmanager
 
 TOKEN=secrets.token_urlsafe(32)
 engine=Engine()
-app=FastAPI(title='Engineering AI Workbench',docs_url=None,redoc_url=None,openapi_url=None)
+@asynccontextmanager
+async def lifespan(app):
+    engine.start_scheduler()
+    try:yield
+    finally:engine.stop_scheduler()
+
+app=FastAPI(lifespan=lifespan,title='Engineering AI Workbench',docs_url=None,redoc_url=None,openapi_url=None)
 class Payload(BaseModel):model_config=ConfigDict(extra='forbid')
 class JobRequest(Payload):
     request:str=Field(min_length=1,max_length=2000)
@@ -31,6 +39,9 @@ class Memory(Payload):
 class Decision(Payload):
     action:Literal['approve','retire']
     revision:int|None=None
+class ScheduleAction(Payload):
+    action:Literal['approve','pause','resume','cancel']
+    fingerprint:str
 class Replay(Payload):mode:Literal['snapshot','current']='snapshot'
 class Study(Payload):
     job_id:str
@@ -74,7 +85,14 @@ def bootstrap():
         jobs=[{k:x[k] for k in ['id','request','status','created','updated','error','extension']} for x in engine.db.execute('SELECT * FROM jobs ORDER BY created DESC')]
     return {'token':TOKEN,'jobs':jobs,'catalog':engine.catalog(),'models':engine.gateway.info(),'worker':worker_status(),
             'project':{'name':'Response validation','classification':'Synthetic data','runs':['Run A · baseline','Run B · revision']},
-            'identity':'Local demo reviewer','version':'0.3.0','storage':engine.artifacts.info(),'agents':engine.list_agents(),'conversations':engine.conversation_list()}
+            'identity':'Local demo reviewer','version':'0.4.0','scheduler':{'running':bool(engine.scheduler_thread and engine.scheduler_thread.is_alive()),'error':engine.scheduler_error},'storage':engine.artifacts.info(),'agents':engine.list_agents(),'conversations':engine.conversation_list()}
+
+@app.get('/api/schedules')
+def schedules():return engine.schedule_list()
+@app.post('/api/schedules')
+def create_schedule(body:ScheduleConfig):return engine.schedule_create(body.model_dump())
+@app.post('/api/schedules/{sid}/action')
+def schedule_action(sid:str,body:ScheduleAction):return engine.schedule_action(sid,body.action,body.fingerprint)
 
 @app.post('/api/conversations')
 def new_conversation(body:ConversationStart):return engine.conversation_create(body.agent_id)

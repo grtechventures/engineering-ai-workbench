@@ -1,8 +1,8 @@
-# Validation — version 0.3
+# Validation — version 0.4
 
 ## Automated validation
 
-61 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+80 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 
@@ -38,3 +38,11 @@ A separate synthetic workspace was exercised through the browser: starter-agent 
 Additional tests reject public/link-local model IPs, DNS names, URL credentials and query strings, unapproved private IPs, remote Docker hosts, input symlinks and unapproved external artifact roots. The general-reasoning endpoint and direct frontier model calls are blocked even when configured. These are application-policy tests, not a penetration test, jailbreak-proof guarantee, OS firewall audit, or verification of a local model server's own outbound behavior.
 
 A fresh live Docker execution was attempted during offline hardening but could not run because the local Docker daemon socket was absent. The new local-socket selection is covered by policy tests; live Windows/container revalidation remains required.
+
+## Version 0.4 scheduling verification
+
+Tests cover explicit recipe approval, stale approvals, agent/skill/method revocation, queued-job permission rechecks, once/daily/weekly timing, daylight-saving gaps and folds, timezone package fallback without system timezone files, overlap prevention, missed occurrences, pause/resume/cancel, restart recovery, duplicate prevention, and transactional rollback when enqueue fails.
+
+A real once-only schedule was created and approved through the browser in an isolated synthetic workspace. It dispatched at its scheduled time without a second plan prompt, exported both inputs through the C++ gateway, produced 101 validated comparison samples, and stopped for report review. The report was then accepted. This pass used the released deterministic recipe, without a model or Docker. Unchanged startup was separately verified to preserve the compiled executable's timestamp and hash.
+
+Scheduling requires one running service process. There is no OS wake-up, automatic whole-job retry, or distributed scheduler. Windows execution remains to be validated; timezone fallback is covered by automated tests. Version 0.4 adds scheduling tables and requires the pinned tzdata dependency to be provisioned before offline startup.

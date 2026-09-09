@@ -2,7 +2,7 @@
 
 A local engineering analysis workspace with conversational agents, reviewed tools, persistent evidence, and reusable methods. The reference implementation uses synthetic data and a small C++ application to demonstrate integration with application-owned binary formats.
 
-**Version 0.3** adds approved knowledge retrieval, evidence storage independent of Git, linked replay, and bounded parameter studies. Engineers can use an installed copy or a source archive without a GitHub account. This is a single-user prototype; it is not a production shared service.
+**Version 0.4** adds persistent once/daily/weekly scheduling of approved released comparisons, alongside reviewed knowledge, evidence storage, replay, and bounded studies. Engineers can use an installed copy or a source archive without a GitHub account. This is a single-user prototype; it is not a production shared service.
 
 - Ask questions and review a proposed analysis plan.
 - Execute released calculations or inspect generated Python before isolated execution.
@@ -91,7 +91,7 @@ The conversation can discuss and refine requests, but execution currently suppor
 | Storage | Local SQLite; configurable local or mounted-filesystem evidence folder; no Git requirement | Shared database/service, SharePoint, OneDrive, Google Drive providers |
 | Governance | Same-origin request checks, per-process request token, local bind, no remote tracing | Corporate SSO/RBAC, independent reviewers, immutable audit, retention enforcement |
 | MCP | Stable tool boundary demonstrated directly | No MCP server is implemented; add a wrapper after the real adapter is stable |
-| Scheduling | Persistent individual jobs | Recurring schedules and a managed departmental runner |
+| Scheduling | Persistent once/daily/weekly schedules, explicit recipe approval, permission rechecks, overlap prevention, missed-run records, pause/resume/cancel | Shared departmental runner, OS startup/wake integration, adaptive workflows |
 | Data sources | Synthetic C++ binary application | SQLite/SQL Server enterprise adapters and file authorization |
 
 The application never automatically installs model weights or Docker. They are configured separately. The initial development validation includes local model and real Docker integration checks; see VALIDATION.md for the platform and results. A frontier provider is not configured or tested live.
@@ -151,6 +151,7 @@ backend/agents.py    Saved revisions, plan selection and capability checks
 backend/conversations.py Persistent messages and bounded local-model actions
 backend/analysis.py  Released calculations, bounded study and draft fixture
 backend/workspace.py Knowledge retrieval, evidence provider, replay and studies
+backend/schedules.py Persistent scheduler, calendar policy, atomic dispatch and authority checks
 backend/models.py    Separate local and public model routes
 backend/worker.py    Docker-only approved-script execution
 legacy/              Dummy C++ application's source and build output
@@ -190,3 +191,13 @@ The optional presentation and design files in `docs/` describe earlier deploymen
 GitHub is a source distribution option, not an application dependency. A maintainer can supply a ZIP through an approved internal software channel. The runtime never pushes conversations, knowledge, databases, or reports to a repository. Keep generated data and local credentials outside distributed packages.
 
 Repository visibility and team access are managed separately from the application. No public release or open-source license is introduced by this update; select licensing terms before advertising reuse rights for an eventual public release.
+
+## Schedule a released workflow
+
+Open an accepted comparison without generated Python, then **Evidence → Schedule this workflow**. Select an agent and an assigned released comparison skill, a local start date/time, an IANA timezone, and once/daily/weekly frequency. Save the proposal, then **Approve schedule and recipe**. Approval authorizes that fixed recipe and current workspace inputs; the model cannot re-plan scheduled work.
+
+**Schedules** shows the next occurrence, status and latest 50 run records. Open a run to review its result. Pause stops future dispatch. Resume skips missed occurrences; cancellation prevents further dispatch and blocks queued jobs at their next authority check. Already-completed results are retained. Cancel an individual analysis through its job controls when needed.
+
+The scheduler starts with the web service and uses no internet or operating-system cron. The machine must be awake and the service running. It does not install a Windows service or wake the computer. Timezone data is provisioned through the pinned tzdata dependency; offline installations need its wheel in their approved bundle.
+
+See [SCHEDULING.md](SCHEDULING.md) for timing, approval and recovery semantics.

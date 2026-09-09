@@ -60,4 +60,4 @@ A restart marks running studies interrupted. Explicit reapproval reruns the boun
 4. Add approved document-store connectors with permissions, deletion and retention propagation.
 5. Add adaptive experiments only for domain-qualified objectives, independent evaluators and explicit compute budgets.
 
-The current release provides no SSO, signed third-party plugin installation, shared departmental service, automatic fine-tuning, GBrain dependency, or recurring background research.
+The current release provides no SSO, signed third-party plugin installation, shared departmental service, automatic fine-tuning, GBrain dependency, or adaptive background research. Released comparison scheduling is implemented; see SCHEDULING.md.

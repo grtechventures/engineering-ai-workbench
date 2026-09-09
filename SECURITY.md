@@ -32,3 +32,7 @@ A loopback HTTP endpoint can proxy requests elsewhere. Some model services may o
 Installation is separate from runtime: dependency installation, model downloads and image downloads can require internet access. For an offline environment, stage vetted dependencies, model weights and images through an approved internal channel. The Workbench launchers do not install missing Python dependencies. They stop with a provisioning message instead. Provision the environment in advance using approved offline wheels.
 
 Do not expose this service on a network interface. Authentication, multi-user project authorization, protected audit storage, retention/deletion controls and independent release review remain deployment work. Server-configured allowlists are not organizational approval workflows.
+
+## Scheduled authority
+
+Only explicitly approved released comparisons can execute on a timer. Timing, current fixed-input scope, agent/skill revision, code hashes and storage roots are captured at approval. The scheduler rechecks this authority at dispatch and execution; it does not grant new model tools or network access. Generated-code skills are rejected. Scheduled results still require review. The scheduler is single-process and local; it is not a multi-user approval or distributed execution system.

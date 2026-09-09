@@ -14,6 +14,7 @@ from .worker import run_script, worker_status
 from .agents import AgentsMixin
 from .conversations import ConversationsMixin
 from .workspace import WorkspaceMixin
+from .schedules import SchedulesMixin
 
 ROOT=Path(__file__).resolve().parents[1]
 class ScriptDraft(BaseModel):
@@ -23,10 +24,10 @@ def digest(value):
     return hashlib.sha256((value if isinstance(value,bytes) else json.dumps(value,sort_keys=True).encode())).hexdigest()
 class State(TypedDict,total=False):
     job_id:str; request:str; extension:bool; inputs:dict; result:dict; script:str
-    snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
+    schedule_id:str; schedule_fingerprint:str; snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
     fingerprint:str; draft_source:str; approved:bool; approved_fingerprint:str; accepted:bool; image:str; narrative:str
 
-class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
+class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
     def __init__(self,data=None):
         self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'))
         if str(self.data).startswith(('\\\\','//')): raise ValueError('Database state must be on local disk, not a UNC network path')
@@ -44,6 +45,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
         self.init_agents()
         self.init_conversations()
         self.init_workspace()
+        self.init_schedules()
         self.db.execute("INSERT OR IGNORE INTO settings VALUES('plugin','enabled')")
         self.db.execute("INSERT OR IGNORE INTO skills VALUES('compare-runs','Compare analysis runs','Compare two exported response curves with units, alignment, and provenance checks.','released','1.0.0',NULL)")
         self.db.execute("UPDATE jobs SET status='interrupted', error='Service restarted. Resume from the persisted checkpoint.' WHERE status IN ('running','queued')")
@@ -54,7 +56,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
         graph=StateGraph(State)
         for name,node in [('agent_plan',self.agent_plan),('plan_review',self.plan_review),('export',self.export),('prepare',self.prepare),('code_review',self.code_review),('execute',self.execute),('result_review',self.result_review)]:
             graph.add_node(name,node)
-        graph.add_conditional_edges(START,lambda s:'agent_plan' if s.get('agent') else 'export')
+        graph.add_conditional_edges(START,lambda s:'agent_plan' if s.get('agent') and not s.get('schedule_id') else 'export')
         graph.add_conditional_edges('agent_plan',lambda s:END if s.get('needs_input') else 'plan_review')
         graph.add_conditional_edges('plan_review',lambda s:'export' if s.get('plan_approved') else END)
         graph.add_edge('export','prepare')
@@ -75,6 +77,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
     def plan_review(self,s):
         answer=interrupt({'kind':'plan_review','fingerprint':s['plan_fingerprint']})
         if answer.get('fingerprint')!=s['plan_fingerprint']:raise ValueError('The plan approval is stale')
+        self.check_scheduled_job(s)
         self.check_agent(s,'extension' if s['extension'] else 'compare')
         self.event(s['job_id'],'plan_review','Plan approved by local demo reviewer' if answer.get('approve') else 'Plan rejected by local demo reviewer')
         return {'plan_approved':bool(answer.get('approve'))}
@@ -92,6 +95,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
     def cfg(self,j): return {'configurable':{'thread_id':j},'recursion_limit':20}
     def fingerprint(self,state): return digest({'script':state['script'],'inputs':state['inputs'],'image':state['image'],'scope':'demo-project/read-only'})
     def export(self,s):
+        self.check_scheduled_job(s)
         self.check_agent(s,'extension' if s['extension'] else 'compare')
         if not self.enabled(): raise ValueError('Run Comparison plugin is disabled')
         if s.get('snapshot'):
@@ -112,6 +116,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
         self.event(s['job_id'],'inputs','Both exports passed schema, unit, and sample alignment checks')
         return {'inputs':inputs}
     def prepare(self,s):
+        self.check_scheduled_job(s)
         self.check_agent(s,'extension' if s['extension'] else 'compare')
         self.event(s['job_id'],'plan','Reuse released comparison; draft a moving-average extension for review' if s['extension'] else 'Reuse the released comparison routine')
         update={'script':DRAFT if s['extension'] else '', 'image':worker_status()['image'],'draft_source':'Bundled example draft'}
@@ -144,6 +149,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
         self.event(s['job_id'],'code_review','Exact script approved by local demo reviewer' if answer.get('approve') else 'Script rejected by local demo reviewer')
         return {'approved':bool(answer.get('approve')),'approved_fingerprint':answer.get('fingerprint','')}
     def execute(self,s):
+        self.check_scheduled_job(s)
         self.check_agent(s,'extension' if s['extension'] else 'compare')
         if not self.enabled(): raise ValueError('Plugin disabled before execution')
         self.event(s['job_id'],'execute','Executing the released numerical comparison')
@@ -245,4 +251,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
             return {'skills':[dict(x) for x in self.db.execute('SELECT * FROM skills')],
                     'knowledge':[dict(x) for x in self.db.execute('SELECT * FROM knowledge')],
                     'plugin':{**json.loads((ROOT/'plugins/run-comparison.json').read_text()),'enabled':self.enabled()}}
-    def close(self):self.db.close();self.cpconn.close()
+    def close(self):
+        self.stop_scheduler()
+        with self.run_lock:
+            self.db.close();self.cpconn.close()
