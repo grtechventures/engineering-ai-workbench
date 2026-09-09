@@ -8,8 +8,8 @@ else
   EWB_PYTHON="${EWB_PYTHON:-python3}"
   "$EWB_PYTHON" -c 'import sys; assert sys.version_info >= (3,11), "Python 3.11 or newer is required"'
   if [ ! -x .venv/bin/python ]; then
-    "$EWB_PYTHON" -m venv .venv
-    .venv/bin/python -m pip install -r requirements.txt
+    echo 'Provision .venv and dependencies first; startup never downloads packages. See README offline setup.' >&2
+    exit 1
   fi
   EWB_PYTHON=.venv/bin/python
 fi

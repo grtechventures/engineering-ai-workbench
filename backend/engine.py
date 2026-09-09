@@ -28,7 +28,9 @@ class State(TypedDict,total=False):
 
 class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
     def __init__(self,data=None):
-        self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'));self.data.mkdir(parents=True,exist_ok=True)
+        self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'))
+        if str(self.data).startswith(('\\\\','//')): raise ValueError('Database state must be on local disk, not a UNC network path')
+        self.data.mkdir(parents=True,exist_ok=True)
         self.lock=threading.RLock();self.run_lock=threading.Lock()
         self.db=sqlite3.connect(self.data/'workbench.sqlite',check_same_thread=False)
         self.db.row_factory=sqlite3.Row
@@ -101,6 +103,7 @@ class Engine(AgentsMixin,ConversationsMixin,WorkspaceMixin):
         inputs={}
         for key in ['a','b']:
             path=self.data/f'run-{key}.ewb'
+            if path.is_symlink() or not path.resolve().is_relative_to(self.data.resolve()): raise ValueError('Input file escapes the authorized workspace')
             raw=subprocess.run([str(exe),'export',str(path)],capture_output=True,text=True,timeout=10,check=True)
             record=json.loads(raw.stdout)
             record['source_hash']=digest(path.read_bytes());record['source_name']=path.name

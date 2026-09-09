@@ -30,12 +30,13 @@ Evidence JSON is written automatically when a numerical result reaches review an
 ```powershell
 $env:EWB_DATA_DIR = 'C:\Workbench\state'
 $env:EWB_ARTIFACT_DIR = '\\fileserver\engineering\workbench-evidence'
+$env:EWB_APPROVED_FILE_ROOTS = $env:EWB_ARTIFACT_DIR
 ./start.ps1
 ```
 
-The process uses the current OS account's file permissions. Setting a share path is an explicit decision to copy evidence—including input exports and code—to that location. Validate permissions, capacity, availability and file semantics before use. A network file share has not been integration-tested in this release. Never place live SQLite databases in a shared/synchronized folder, OneDrive directory, or WAN share. Do not run multiple web workers.
+An evidence destination outside the local state directory must exactly match an entry in EWB_APPROVED_FILE_ROOTS (OS path-list separator). The process uses the current OS account's file permissions. Setting a share path is an explicit decision to copy evidence—including input exports and code—to that location. Validate permissions, capacity, availability and file semantics before use. A network file share has not been integration-tested in this release. Never place live SQLite databases in a shared/synchronized folder, OneDrive directory, or WAN share. Do not run multiple web workers.
 
-`FileArtifacts.put/get/info` is the provider boundary for future stores. SharePoint, OneDrive and Google Drive adapters, synchronization, credential flows and ACL mirroring are **not implemented**. Cloud storage approval is separate from cloud inference approval. Engineering model calls remain local or explicitly approved on-premises; the frontier route accepts curated public topics only.
+`FileArtifacts.put/get/info` is the provider boundary for future stores. SharePoint, OneDrive and Google Drive adapters, synchronization, credential flows and ACL mirroring are **not implemented**. Cloud storage approval is separate from cloud inference approval. Engineering model calls remain local or explicitly approved on-premises; all frontier calls are disabled by the offline policy; see SECURITY.md.
 
 ## Replay and reproducibility
 

@@ -2,7 +2,7 @@
 
 ## Automated validation
 
-48 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
+61 automated tests passed on macOS with Python 3.12 on 8 September 2026. One upstream Starlette/AnyIO deprecation warning remains. Run `python -m pytest -q` in the configured environment after compiling/seeding with `scripts/setup.py`.
 
 Coverage includes:
 
@@ -32,3 +32,9 @@ Stop the service and back up the local data directory before upgrades. Version 0
 ## Version 0.3 browser verification
 
 A separate synthetic workspace was exercised through the browser: starter-agent creation, conversation, plan approval, C++ comparison, report acceptance, study proposal, bounded execution, independent-reference results and study acceptance. Knowledge proposal, source display, approval, keyword search and conversation reference display were also checked. JavaScript syntax checks passed for all three application scripts. This browser pass used demo-mode routing; new live-model quality has not been benchmarked.
+
+## Offline hardening checks
+
+Additional tests reject public/link-local model IPs, DNS names, URL credentials and query strings, unapproved private IPs, remote Docker hosts, input symlinks and unapproved external artifact roots. The general-reasoning endpoint and direct frontier model calls are blocked even when configured. These are application-policy tests, not a penetration test, jailbreak-proof guarantee, OS firewall audit, or verification of a local model server's own outbound behavior.
+
+A fresh live Docker execution was attempted during offline hardening but could not run because the local Docker daemon socket was absent. The new local-socket selection is covered by policy tests; live Windows/container revalidation remains required.

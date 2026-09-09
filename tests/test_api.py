@@ -23,14 +23,12 @@ def test_request_boundary_and_unknown_fields(client):
     assert c.get('/api/bootstrap',headers={'Host':'untrusted.example'}).status_code==403
     assert c.post('/api/general-reasoning',json={'topic':'rmse','engineering_data':'private'}).status_code==422
 
-def test_frontier_receives_only_curated_prompt(client,monkeypatch):
+def test_frontier_disabled_before_any_model_call(client,monkeypatch):
     c,m=client;calls=[]
     def complete(*args,**kwargs):calls.append((args,kwargs));return 'Public explanation'
     monkeypatch.setattr(m.engine.gateway,'complete',complete)
     r=c.post('/api/general-reasoning',json={'topic':'rmse'})
-    assert r.status_code==200 and len(calls)==1
-    assert calls[0][0][0]=='frontier' and calls[0][1]=={}
-    assert 'invented numerical example' in calls[0][0][1]
+    assert r.status_code==409 and calls==[]
 
 def test_skill_release_and_knowledge_lifecycle(client):
     c,m=client;j=m.engine.create('Comparison',background=False)

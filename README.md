@@ -18,7 +18,7 @@ The application runs in a local browser on Windows 11. Install Python 3.12 and a
 
 For the conversational and generated-Python demonstration, also install [Ollama for Windows](https://docs.ollama.com/windows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/). Run Docker in **Linux-container mode**, for example with its WSL 2 backend. The C++ gateway runs natively on Windows; the approved Python extension runs inside a Linux container.
 
-Clone or download this repository, open Developer PowerShell in its root directory, start Ollama and Docker Desktop, then run:
+Clone or download this repository and provision Python dependencies using the manual setup below (or an approved offline wheel bundle). Open Developer PowerShell in its root directory, start Ollama and Docker Desktop, then run the following one-time provisioning commands only where downloads are permitted:
 
 ```powershell
 # Download the demo model and Python worker image once.
@@ -33,7 +33,7 @@ $env:EWB_WORKER_IMAGE = (docker image inspect --format '{{.Id}}' python:3.12-sli
 ./start.ps1
 ```
 
-Open **http://127.0.0.1:8765** in the Windows browser and keep the PowerShell window open. The launcher creates `.venv`, installs dependencies, compiles the dummy C++ application, creates synthetic inputs and starts the service. If the server is already running, use that instance rather than starting a second server on the same port. Stop it with **Ctrl+C**.
+Open **http://127.0.0.1:8765** in the Windows browser and keep the PowerShell window open. Provision the Python environment first. The launcher compiles the dummy C++ application, creates synthetic inputs and starts the service; it never downloads dependencies. If the server is already running, use that instance rather than starting a second server on the same port. Stop it with **Ctrl+C**.
 
 The environment variables above last for the current PowerShell session. Set them again in a new session, or save the non-secret model and image settings using the files described below. On a fresh checkout, create an agent in **Agents**; agents and conversations from the development machine are not included.
 
@@ -46,6 +46,13 @@ py -3.12 -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ./.venv/Scripts/python.exe scripts/setup.py
 ./.venv/Scripts/python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8765
+```
+
+For offline dependency provisioning, prepare a vetted wheel directory on a separate approved build machine, then install locally:
+
+```powershell
+py -3.12 -m venv .venv
+./.venv/Scripts/python.exe -m pip install --no-index --find-links C:/approved-wheels -r requirements.txt
 ```
 
 For optional macOS/Linux development, `bash start.command` remains available with Python 3.11+ and a C++17 compiler. Windows 11 is the primary setup documented here.
@@ -75,7 +82,7 @@ The conversation can discuss and refine requests, but execution currently suppor
 | Analysis | Real deterministic comparison and independent fixture tests | Additional engineering methods and acceptance criteria |
 | Generated Python | Structured script proposals, syntax checks, exact-artifact approval, Docker-only runner, reference validation and receipts | Production sandbox hardening, new-method qualification |
 | Local models | Configured local adapter for conversation, structured planning, drafting and explanations | Broader task benchmarks and model-profile selection per agent |
-| Frontier models | Separate OpenAI-compatible route with curated public questions only | Approved provider, credentials, and organizational approval |
+| Internet inference | Disabled at API and model client, even with frontier configuration | Any future cloud mode requires a separate policy change and review |
 | Skills | Candidate, release, reuse, retirement of bundled workflow recipes | General packaging, automated qualification, release signatures |
 | Plugins | Bundled manifest and enable/disable enforcement | Signed distribution, compatibility upgrades/rollback, third-party extension isolation |
 | Knowledge | Sourced notes, revision-checked review, keyword retrieval into local conversation, retrieval history, retirement | Multiple projects, identity-backed access controls, semantic retrieval, retention automation |
@@ -101,7 +108,7 @@ $env:EWB_LOCAL_MODEL = 'qwen2.5-coder:7b'
 ./start.ps1
 ```
 
-A non-loopback engineering endpoint also requires `EWB_APPROVED_ONPREM=1`. That is an administrator assertion, not an automatic proof of corporate approval; configure only a host within your permitted data boundary. The prototype does not implement network-based verification of an approved on-premises server.
+A non-loopback engineering endpoint requires a literal private LAN IP, `EWB_APPROVED_ONPREM=1`, and that exact IP in `EWB_APPROVED_MODEL_IPS`. This is an administrator-configured allowlist; it does not establish that the destination model server is itself offline.
 
 The local model must support JSON-schema structured chat responses for conversation, plans and script proposals. The launchers can also read non-secret settings from `data/local-model.json` with `url` and `model` keys; explicit environment variables take priority. Model credentials belong only in environment variables.
 
@@ -111,17 +118,13 @@ With a local model configured, the moving-average workflow obtains a draft scrip
 
 A configured but unreachable model results in a visible error; it never silently switches an engineering request to a cloud model. Generation is currently restricted to the supported extension, not arbitrary new engineering methods.
 
-## Connect a frontier or enterprise cloud model
+## Offline security policy
 
-```powershell
-$env:EWB_FRONTIER_URL = 'https://your-approved-provider.example/v1'
-$env:EWB_FRONTIER_MODEL = 'your-approved-model'
-$env:EWB_FRONTIER_API_KEY = '...'
-```
+Internet inference is disabled, including the general-reasoning API. Configuring a frontier URL or key does not enable it. Local model requests accept literal loopback addresses (localhost is converted to 127.0.0.1). No model destination is accepted from conversation text.
 
-Use **Model connections → Public topic**. Only a server-owned topic enum is accepted. The server creates a curated public prompt, with no free-form text, conversation, source, files, job ID, or measurements. The engineering graph never uses this route. Unknown request fields are rejected. OpenAI-compatible endpoints are supported; provider-specific APIs such as native Anthropic Messages or Azure-specific authentication need an additional adapter.
+An approved LAN model requires a literal private IP plus both `EWB_APPROVED_ONPREM=1` and an exact entry in the comma-separated `EWB_APPROVED_MODEL_IPS` allowlist. Public and link-local addresses, DNS hostnames, URL credentials, queries and fragments are rejected. Prefer HTTPS for LAN connections. Redirects and environment proxies are disabled.
 
-Credentials remain in the server environment. Requests disable proxy-environment inheritance, redirects are not followed, and frontier URLs require HTTPS. Do not mistake these development controls for a complete enterprise gateway.
+See [SECURITY.md](SECURITY.md) for enforcement and remaining OS-level requirements. This policy intentionally disables the earlier optional frontier route.
 
 ## Enable reviewed Python execution
 

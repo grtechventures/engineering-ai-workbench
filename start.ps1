@@ -1,10 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 if (!(Test-Path '.venv\Scripts\python.exe')) {
-    py -3.12 -m venv .venv
-    if ($LASTEXITCODE -ne 0) { throw 'Install Python 3.12 first.' }
-    & .venv\Scripts\python.exe -m pip install -r requirements.txt
-    if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
+    throw 'Provision .venv and dependencies first; startup never downloads packages. See README offline setup.'
 }
 if (Test-Path 'data\worker-image.txt') {
     if (!$env:EWB_WORKER_IMAGE) { $env:EWB_WORKER_IMAGE = (Get-Content 'data\worker-image.txt' -Raw).Trim() }

@@ -169,11 +169,7 @@ def plugin(body:PluginSwitch):
     return {'ok':True}
 @app.post('/api/general-reasoning')
 def general(body:Reason):
-    # No free-form prompt, attachments, job IDs, conversation or project data are accepted.
-    prompt=PUBLIC_PROMPTS[body.topic]
-    try:answer=engine.gateway.complete('frontier',prompt)
-    except Exception as e:raise ValueError('Frontier endpoint is unavailable or not configured. No engineering context was included.') from e
-    return {'text':answer,'sent_prompt':prompt,'scope':'Public, curated general reasoning'}
+    raise ValueError('Internet inference is disabled by the offline policy')
 @app.get('/api/source')
 def source():
     return {'files':[{'name':'C++ binary gateway','path':'legacy/engineering_demo.cpp','content':(ROOT/'legacy/engineering_demo.cpp').read_text()},

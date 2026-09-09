@@ -2,6 +2,7 @@
 import os
 from urllib.parse import urlparse
 import httpx
+from .network_policy import validate_model_url
 
 class ModelGateway:
     def __init__(self):
@@ -10,21 +11,18 @@ class ModelGateway:
         self.frontier_url=os.getenv('EWB_FRONTIER_URL','').rstrip('/')
         self.frontier_model=os.getenv('EWB_FRONTIER_MODEL','')
         self.frontier_key=os.getenv('EWB_FRONTIER_API_KEY','')
-        if self.local_url and urlparse(self.local_url).hostname not in ('localhost','127.0.0.1','::1'):
-            if os.getenv('EWB_APPROVED_ONPREM')!='1':
-                raise ValueError('Non-loopback engineering model requires explicit EWB_APPROVED_ONPREM=1')
-        if self.frontier_url and urlparse(self.frontier_url).scheme!='https':
-            raise ValueError('Frontier endpoint must use HTTPS')
+        if self.local_url:self.local_url=validate_model_url(self.local_url)
 
     def info(self):
         return {'local':{'configured':bool(self.local_url and self.local_model),'model':self.local_model or 'Deterministic demo'},
-                'frontier':{'configured':bool(self.frontier_url and self.frontier_model),'model':self.frontier_model or 'Not configured'},
-                'boundary':'Engineering jobs never call the frontier endpoint. General reasoning uses curated public prompts only.'}
+                'frontier':{'configured':False,'model':'Disabled by offline policy'},
+                'boundary':'Internet model calls are disabled. Loopback is allowed; private LAN model IPs require explicit administrator approval.'}
 
     def complete(self, scope, prompt, *, engineering_context=None, schema=None):
         if scope=='frontier' and engineering_context is not None:
             raise ValueError('Engineering context cannot be sent to a frontier model')
-        if scope=='local': url,model,key=self.local_url,self.local_model,os.getenv('EWB_LOCAL_API_KEY','')
+        if scope=='frontier': raise ValueError('Internet inference is disabled by the offline policy')
+        if scope=='local': url,model,key=validate_model_url(self.local_url) if self.local_url else '',self.local_model,os.getenv('EWB_LOCAL_API_KEY','')
         elif scope=='frontier': url,model,key=self.frontier_url,self.frontier_model,self.frontier_key
         else: raise ValueError('Unknown model scope')
         if not url or not model: raise ValueError('Model endpoint is not configured')

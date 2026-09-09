@@ -33,7 +33,11 @@ class FileArtifacts:
 
 class WorkspaceMixin:
     def init_workspace(self):
-        self.artifacts=FileArtifacts(os.getenv('EWB_ARTIFACT_DIR',str(self.data/'artifacts')))
+        artifact_root=Path(os.getenv('EWB_ARTIFACT_DIR',str(self.data/'artifacts'))).resolve()
+        approved={str(Path(x).resolve()) for x in os.getenv('EWB_APPROVED_FILE_ROOTS','').split(os.pathsep) if x}
+        if not artifact_root.is_relative_to(self.data.resolve()) and str(artifact_root) not in approved:
+            raise ValueError('External evidence directory requires exact EWB_APPROVED_FILE_ROOTS approval')
+        self.artifacts=FileArtifacts(artifact_root)
         columns={x[1] for x in self.db.execute('PRAGMA table_info(knowledge)')}
         for name,decl in [('source',"TEXT DEFAULT 'User-authored note'"),('revision','INTEGER DEFAULT 1'),('created','REAL DEFAULT 0')]:
             if name not in columns: self.db.execute(f'ALTER TABLE knowledge ADD COLUMN {name} {decl}')

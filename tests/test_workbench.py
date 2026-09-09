@@ -58,7 +58,7 @@ def test_cloud_rejects_engineering_context_before_network(monkeypatch):
     with pytest.raises(ValueError,match='Engineering context'):ModelGateway().complete('frontier','Explain',engineering_context={'secret':'engineering'})
 def test_nonloopback_engineering_model_requires_explicit_approval(monkeypatch):
     monkeypatch.setenv('EWB_LOCAL_MODEL_URL','https://remote.example/v1');monkeypatch.delenv('EWB_APPROVED_ONPREM',raising=False)
-    with pytest.raises(ValueError,match='explicit'):ModelGateway()
+    with pytest.raises(ValueError,match='explicitly'):ModelGateway()
 def test_cancelled_review_cannot_resume(eng):
     j=eng.create('Compare',background=False);eng.act(j,'cancel',background=False)
     with pytest.raises(ValueError):eng.act(j,'resume',background=False)
