@@ -1,3 +1,4 @@
+from .resources import ResourcesMixin
 from .authored_skills import AuthoredSkillsMixin
 from .tool_registry import ToolRegistryMixin
 from .plotting import PlottingMixin
@@ -30,7 +31,7 @@ class State(TypedDict,total=False):
     schedule_id:str; schedule_fingerprint:str; snapshot:dict; agent:dict; plan:dict; plan_fingerprint:str; plan_approved:bool; needs_input:bool
     fingerprint:str; draft_source:str; approved:bool; approved_fingerprint:str; accepted:bool; image:str; narrative:str
 
-class Engine(AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
+class Engine(ResourcesMixin,AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,ConversationsMixin,WorkspaceMixin,SchedulesMixin):
     def __init__(self,data=None):
         self.data=Path(data or os.getenv('EWB_DATA_DIR',ROOT/'data'))
         if str(self.data).startswith(('\\\\','//')): raise ValueError('Database state must be on local disk, not a UNC network path')
@@ -51,6 +52,7 @@ class Engine(AuthoredSkillsMixin,ToolRegistryMixin,PlottingMixin,AgentsMixin,Con
         self.init_schedules()
         self.init_plots()
         self.init_tool_registry()
+        self.init_resources()
         self.init_authored_skills()
         self.db.execute("INSERT OR IGNORE INTO settings VALUES('plugin','enabled')")
         self.db.execute("INSERT OR IGNORE INTO skills VALUES('compare-runs','Compare analysis runs','Compare two exported response curves with units, alignment, and provenance checks.','released','1.0.0',NULL)")

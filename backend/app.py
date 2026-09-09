@@ -235,3 +235,13 @@ def packages():return engine.packages_list()
 def create_package(body:PackageDraft):return engine.package_create(body.model_dump())
 @app.post('/api/skill-packages/{pid}/action')
 def package_action(pid:str,body:PackageAction):return engine.package_action(pid,body.action)
+
+from .resources import ResourceDraft
+@app.get('/api/resources')
+def resources():return engine.resources_list()
+@app.post('/api/resources')
+def resource_add(body:ResourceDraft):return engine.resource_add(body.model_dump())
+@app.post('/api/resources/{rid}/inspect')
+def resource_inspect(rid:str):return engine.resource_inspect(rid)
+@app.post('/api/resources/{rid}/remove')
+def resource_remove(rid:str):return engine.resource_remove(rid)

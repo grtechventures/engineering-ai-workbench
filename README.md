@@ -209,3 +209,7 @@ Generate reviewed Python tasks for calculations, tables and plots, then revise t
 ## Create or import skills and packages
 
 Skills library supports direct drafts and Markdown/JSON import without an accepted analysis. Plugins supports declarative multi-skill packages. See [Skill authoring](SKILL_AUTHORING.md) for formats, release and agent assignment, and current limitations. Multiple tool registrations are supported.
+
+## Source and data locations
+
+Source discovery accepts registered code folders/files. Data sources records dataset locations, formats and reader references, with bounded CSV preview. Access is denied unless an administrator configures approved roots. See [Source and data locations](DATA_SOURCES.md) for limits and setup. These registrations do not yet attach inputs or source context to model tasks.
